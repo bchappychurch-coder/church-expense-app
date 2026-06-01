@@ -1,0 +1,111 @@
+<h2>담당자 화면 — 전체 현황판</h2>
+<p class="subtitle">담당자는 모든 결재 진행 상태를 실시간으로 확인</p>
+
+<div style="max-width:700px; margin:0 auto;">
+
+  <!-- 상단 요약 카드 -->
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px; margin-bottom:20px;">
+    <div style="background:#fef9c3; border:2px solid #fbbf24; border-radius:12px; padding:14px; text-align:center;">
+      <div style="font-size:11px; color:#92400e; font-weight:bold;">대기중</div>
+      <div style="font-size:28px; font-weight:bold; color:#b45309;">3</div>
+    </div>
+    <div style="background:#ede9fe; border:2px solid #a78bfa; border-radius:12px; padding:14px; text-align:center;">
+      <div style="font-size:11px; color:#5b21b6; font-weight:bold;">승인중</div>
+      <div style="font-size:28px; font-weight:bold; color:#7c3aed;">2</div>
+    </div>
+    <div style="background:#f0fdf4; border:2px solid #86efac; border-radius:12px; padding:14px; text-align:center;">
+      <div style="font-size:11px; color:#166534; font-weight:bold;">처리완료</div>
+      <div style="font-size:28px; font-weight:bold; color:#16a34a;">12</div>
+    </div>
+    <div style="background:#fef2f2; border:2px solid #fca5a5; border-radius:12px; padding:14px; text-align:center;">
+      <div style="font-size:11px; color:#991b1b; font-weight:bold;">반려</div>
+      <div style="font-size:28px; font-weight:bold; color:#dc2626;">1</div>
+    </div>
+  </div>
+
+  <!-- 결재 목록 -->
+  <div style="background:white; border:2px solid #e5e7eb; border-radius:14px; overflow:hidden;">
+
+    <!-- 헤더 -->
+    <div style="background:#f9fafb; padding:12px 16px; font-size:13px; font-weight:bold; color:#374151; border-bottom:1px solid #e5e7eb; display:grid; grid-template-columns:1.5fr 1fr 1fr 1.2fr 1fr;">
+      <span>신청자 / 용도</span>
+      <span>부서</span>
+      <span>금액</span>
+      <span>진행 상태</span>
+      <span>날짜</span>
+    </div>
+
+    <!-- 행 1 - 대기중 -->
+    <div style="padding:14px 16px; border-bottom:1px solid #f3f4f6; display:grid; grid-template-columns:1.5fr 1fr 1fr 1.2fr 1fr; align-items:center; background:#fffbeb;">
+      <div>
+        <div style="font-weight:bold; font-size:14px;">김영희 권사</div>
+        <div style="font-size:12px; color:#9ca3af;">식비</div>
+      </div>
+      <div style="font-size:13px;">전도국</div>
+      <div style="font-weight:bold; color:#374151;">35,000원</div>
+      <div>
+        <span style="background:#fef9c3; color:#92400e; border:1px solid #fbbf24; border-radius:20px; padding:3px 10px; font-size:12px; white-space:nowrap;">⏳ 승인 대기</span>
+      </div>
+      <div style="font-size:12px; color:#9ca3af;">06.01</div>
+    </div>
+
+    <!-- 행 2 - 관리자1 승인완료 -->
+    <div style="padding:14px 16px; border-bottom:1px solid #f3f4f6; display:grid; grid-template-columns:1.5fr 1fr 1fr 1.2fr 1fr; align-items:center;">
+      <div>
+        <div style="font-weight:bold; font-size:14px;">이정숙 권사</div>
+        <div style="font-size:12px; color:#9ca3af;">소모품</div>
+      </div>
+      <div style="font-size:13px;">사업부</div>
+      <div style="font-weight:bold; color:#374151;">12,000원</div>
+      <div>
+        <span style="background:#ede9fe; color:#5b21b6; border:1px solid #a78bfa; border-radius:20px; padding:3px 10px; font-size:12px; white-space:nowrap;">✅ 1차 승인</span>
+      </div>
+      <div style="font-size:12px; color:#9ca3af;">05.31</div>
+    </div>
+
+    <!-- 행 3 - 최종 처리 필요 -->
+    <div style="padding:14px 16px; border-bottom:1px solid #f3f4f6; display:grid; grid-template-columns:1.5fr 1fr 1fr 1.2fr 1fr; align-items:center; background:#eff6ff;">
+      <div>
+        <div style="font-weight:bold; font-size:14px;">박순자 집사</div>
+        <div style="font-size:12px; color:#9ca3af;">교통비</div>
+      </div>
+      <div style="font-size:13px;">선교국</div>
+      <div style="font-weight:bold; color:#374151;">8,500원</div>
+      <div>
+        <span style="background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; border-radius:20px; padding:3px 10px; font-size:12px; white-space:nowrap;">💼 처리 필요</span>
+      </div>
+      <div style="font-size:12px; color:#9ca3af;">05.30</div>
+    </div>
+
+    <!-- 행 4 - 완료 -->
+    <div style="padding:14px 16px; display:grid; grid-template-columns:1.5fr 1fr 1fr 1.2fr 1fr; align-items:center; opacity:0.6;">
+      <div>
+        <div style="font-weight:bold; font-size:14px;">최복순 권사</div>
+        <div style="font-size:12px; color:#9ca3af;">행사비</div>
+      </div>
+      <div style="font-size:13px;">선교국</div>
+      <div style="font-weight:bold; color:#374151;">150,000원</div>
+      <div>
+        <span style="background:#f0fdf4; color:#166534; border:1px solid #86efac; border-radius:20px; padding:3px 10px; font-size:12px; white-space:nowrap;">✔ 송금완료</span>
+      </div>
+      <div style="font-size:12px; color:#9ca3af;">05.28</div>
+    </div>
+  </div>
+
+  <!-- 상세 클릭시 -->
+  <div style="margin-top:16px; background:#f8fafc; border:2px solid #cbd5e1; border-radius:14px; padding:16px;">
+    <div style="font-size:13px; font-weight:bold; color:#475569; margin-bottom:10px;">📋 상세 보기 예시 — 박순자 집사 (교통비)</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:13px;">
+      <div><span style="color:#9ca3af;">신청자</span><br><b>박순자 집사</b></div>
+      <div><span style="color:#9ca3af;">은행계좌</span><br><b>국민은행 123-456-789012</b></div>
+      <div><span style="color:#9ca3af;">금액</span><br><b style="font-size:18px;">8,500원</b></div>
+      <div><span style="color:#9ca3af;">부서 / 용도</span><br><b>선교국 / 교통비</b></div>
+    </div>
+    <div style="margin-top:10px; background:#e2e8f0; border-radius:8px; height:80px; display:flex; align-items:center; justify-content:center; color:#64748b; font-size:13px;">🧾 영수증 사진 (탭하면 확대)</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;">
+      <button class="mock-button" style="padding:14px; background:#dcfce7; border:2px solid #86efac; border-radius:10px; font-weight:bold; color:#166534;">✔ 송금 완료 처리</button>
+      <button class="mock-button" style="padding:14px; background:#fef2f2; border:2px solid #fca5a5; border-radius:10px; font-weight:bold; color:#dc2626;">✘ 반려</button>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,194 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../models/user_model.dart';
+import '../providers/app_provider.dart';
+import '../services/firestore_service.dart';
+import '../services/notification_service.dart';
+import '../widgets/big_button.dart';
+import 'department_screen.dart';
+import 'approver_screen.dart';
+import 'manager_dashboard.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final _firestoreService = FirestoreService();
+  final _notificationService = NotificationService();
+  List<UserModel> _users = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+    _initNotifications();
+  }
+
+  Future<void> _loadUsers() async {
+    final users = await _firestoreService.getUsers();
+    if (mounted) setState(() { _users = users; _loading = false; });
+  }
+
+  Future<void> _initNotifications() async {
+    final token = await _notificationService.initialize();
+    // 토큰은 사용자 선택 후 저장 (이 시점에서는 아직 사용자 미선택)
+    debugPrint('FCM Token: $token');
+  }
+
+  void _onUserSelected(UserModel user) async {
+    final token = await _notificationService.getToken();
+    if (token != null) {
+      await _firestoreService.updateFcmToken(user.id, token);
+    }
+    if (!mounted) return;
+    context.read<AppProvider>().setUser(user);
+
+    // 승인자·담당자도 지출 신청 가능 → 역할 선택 다이얼로그
+    if (user.isManager || user.isApprover) {
+      _showRoleDialog(user);
+    } else {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const DepartmentScreen()));
+    }
+  }
+
+  void _showRoleDialog(UserModel user) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('${user.name}님',
+            style: const TextStyle(
+                fontSize: 20, fontWeight: FontWeight.bold)),
+        content: const Text('무엇을 하시겠어요?',
+            style: TextStyle(fontSize: 17, color: Color(0xFF6B7280))),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ElevatedButton.icon(
+                icon: const Icon(Icons.receipt_long, color: Colors.white),
+                label: const Text('지출 신청하기',
+                    style: TextStyle(fontSize: 18, color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(context,
+                      MaterialPageRoute(
+                          builder: (_) => const DepartmentScreen()));
+                },
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.approval, color: Colors.white),
+                label: Text(
+                  user.isManager ? '전체 현황 보기' : '결재 승인하기',
+                  style: const TextStyle(fontSize: 18, color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (user.isManager) {
+                    Navigator.push(context,
+                        MaterialPageRoute(
+                            builder: (_) => const ManagerDashboard()));
+                  } else {
+                    Navigator.push(context,
+                        MaterialPageRoute(
+                            builder: (_) => const ApproverScreen()));
+                  }
+                },
+              ),
+              const SizedBox(height: 4),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF6366F1),
+        title: const Text(
+          '교회 지출 관리',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+        elevation: 0,
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '본인 이름을 눌러주세요',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    '이름을 선택하면 지출 신청 화면으로 이동합니다',
+                    style: TextStyle(fontSize: 15, color: Color(0xFF9CA3AF)),
+                  ),
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: GridView.builder(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 2.2,
+                      ),
+                      itemCount: _users.length,
+                      itemBuilder: (context, index) {
+                        final user = _users[index];
+                        final roleLabel = user.isManager
+                            ? '(담당자)'
+                            : user.isApprover
+                                ? '(승인자)'
+                                : '';
+                        return BigButton(
+                          label: user.name,
+                          subLabel: roleLabel.isEmpty ? null : roleLabel,
+                          onTap: () => _onUserSelected(user),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+}

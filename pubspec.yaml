@@ -1,0 +1,38 @@
+name: church_expense_app
+description: 교회 지출 관리 앱
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase
+  firebase_core: ^3.0.0
+  cloud_firestore: ^5.0.0
+  firebase_storage: ^12.0.0
+  firebase_messaging: ^15.0.0
+
+  # OCR
+  google_mlkit_text_recognition: ^0.13.0
+
+  # 카메라 / 이미지
+  image_picker: ^1.1.0
+  cached_network_image: ^3.3.0
+
+  # 상태관리
+  provider: ^6.1.0
+
+  # 유틸
+  intl: ^0.19.0
+  shared_preferences: ^2.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
