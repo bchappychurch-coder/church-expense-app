@@ -19,6 +19,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _firestoreService = FirestoreService();
   final _notificationService = NotificationService();
+  final _nameController = TextEditingController();
   List<UserModel> _users = [];
   bool _loading = true;
 
@@ -27,6 +28,31 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadUsers();
     _initNotifications();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _onDirectNameSubmit() {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return;
+    final existing = _users.where((u) => u.name == name).firstOrNull;
+    if (existing != null) {
+      _onUserSelected(existing);
+    } else {
+      final tempUser = UserModel(
+        id: 'temp_$name',
+        name: name,
+        phone: '',
+        bankName: '',
+        bankAccount: '',
+        role: 'member',
+      );
+      _onUserSelected(tempUser);
+    }
   }
 
   Future<void> _loadUsers() async {
@@ -186,6 +212,57 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '목록에 없으면 직접 입력하세요',
+                    style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _nameController,
+                          onSubmitted: (_) => _onDirectNameSubmit(),
+                          decoration: InputDecoration(
+                            hintText: '이름 입력',
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                  color: Color(0xFFD1D5DB)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                  color: Color(0xFF6366F1), width: 2),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton(
+                        onPressed: _onDirectNameSubmit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          minimumSize: Size.zero,
+                        ),
+                        child: const Text('확인',
+                            style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),

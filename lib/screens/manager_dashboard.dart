@@ -11,6 +11,16 @@ import 'department_screen.dart';
 class ManagerDashboard extends StatelessWidget {
   const ManagerDashboard({super.key});
 
+  void _showDepartmentSettings(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => const _DepartmentSettings(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.read<AppProvider>().currentUser!;
@@ -25,7 +35,11 @@ class ManagerDashboard extends StatelessWidget {
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
         actions: [
-          // 담당자도 지출 신청 가능
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.white),
+            tooltip: '부서 설정',
+            onPressed: () => _showDepartmentSettings(context),
+          ),
           TextButton.icon(
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const DepartmentScreen())),
@@ -375,6 +389,141 @@ class _Row extends StatelessWidget {
             child: Text(value,
                 style: const TextStyle(
                     fontSize: 16, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DepartmentSettings extends StatefulWidget {
+  const _DepartmentSettings();
+
+  @override
+  State<_DepartmentSettings> createState() => _DepartmentSettingsState();
+}
+
+class _DepartmentSettingsState extends State<_DepartmentSettings> {
+  final _service = FirestoreService();
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _add() async {
+    final name = _controller.text.trim();
+    if (name.isEmpty) return;
+    await _service.addDepartment(name);
+    _controller.clear();
+  }
+
+  Future<void> _delete(String name) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('부서 삭제'),
+        content: Text('"$name" 부서를 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red),
+              child: const Text('삭제',
+                  style: TextStyle(color: Colors.white))),
+        ],
+      ),
+    );
+    if (confirmed == true) await _service.deleteDepartment(name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text('부서 관리',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          StreamBuilder<List<String>>(
+            stream: _service.streamDepartments(),
+            builder: (context, snapshot) {
+              final departments = snapshot.data ?? [];
+              return Column(
+                children: departments
+                    .map((dept) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(dept,
+                              style: const TextStyle(fontSize: 16)),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline,
+                                color: Colors.red),
+                            onPressed: () => _delete(dept),
+                          ),
+                        ))
+                    .toList(),
+              );
+            },
+          ),
+          const Divider(),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  onSubmitted: (_) => _add(),
+                  decoration: InputDecoration(
+                    hintText: '새 부서 이름',
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(
+                          color: Color(0xFF6366F1), width: 2),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton(
+                onPressed: _add,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  minimumSize: Size.zero,
+                ),
+                child: const Text('추가',
+                    style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ],
           ),
         ],
       ),

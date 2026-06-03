@@ -34,6 +34,41 @@ class FirestoreService {
     await _db.collection('users').doc(userId).update({'fcmToken': token});
   }
 
+  // ── 부서 관리 ────────────────────────────────────────
+
+  static const _defaultDepartments = ['사업부', '전도국', '선교국', '기타 선교회'];
+
+  Stream<List<String>> streamDepartments() {
+    return _db.collection('settings').doc('departments').snapshots().map((doc) {
+      if (!doc.exists) return _defaultDepartments;
+      final list = doc.data()?['list'];
+      if (list is List) return List<String>.from(list);
+      return _defaultDepartments;
+    });
+  }
+
+  Future<void> addDepartment(String name) async {
+    final ref = _db.collection('settings').doc('departments');
+    final doc = await ref.get();
+    if (!doc.exists) {
+      await ref.set({'list': [..._defaultDepartments, name]});
+    } else {
+      final current = List<String>.from(doc.data()?['list'] ?? _defaultDepartments);
+      if (!current.contains(name)) {
+        current.add(name);
+        await ref.update({'list': current});
+      }
+    }
+  }
+
+  Future<void> deleteDepartment(String name) async {
+    final ref = _db.collection('settings').doc('departments');
+    final doc = await ref.get();
+    final current = List<String>.from(doc.data()?['list'] ?? _defaultDepartments);
+    current.remove(name);
+    await ref.set({'list': current});
+  }
+
   // ── 지출 신청 ────────────────────────────────────────
 
   Future<String> createExpense(ExpenseModel expense) async {
