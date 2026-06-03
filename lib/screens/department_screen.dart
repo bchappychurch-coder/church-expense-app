@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/app_provider.dart';
 import '../services/firestore_service.dart';
 import '../widgets/big_button.dart';
@@ -57,8 +58,14 @@ class DepartmentScreen extends StatelessWidget {
                         label: dept,
                         color: const Color(0xFFF0FDF4),
                         borderColor: const Color(0xFF86EFAC),
-                        onTap: () {
+                        onTap: () async {
+                          final user = context.read<AppProvider>().currentUser!;
                           context.read<AppProvider>().setDepartment(dept);
+                          // 카메라 후 앱 재시작 대비 세션 저장
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setString('session_user_id', user.id);
+                          await prefs.setString('session_department', dept);
+                          if (!context.mounted) return;
                           Navigator.push(
                             context,
                             MaterialPageRoute(

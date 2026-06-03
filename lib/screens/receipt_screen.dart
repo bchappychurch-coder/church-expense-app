@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'purpose_screen.dart';
 
 class ReceiptScreen extends StatefulWidget {
@@ -13,21 +14,35 @@ class ReceiptScreen extends StatefulWidget {
 class _ReceiptScreenState extends State<ReceiptScreen> {
   File? _receiptImage;
   final _amountController = TextEditingController();
+  final _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    _recoverLostImage();
+  }
+
+  Future<void> _recoverLostImage() async {
+    final response = await _picker.retrieveLostData();
+    if (response.isEmpty || !mounted) return;
+    if (response.file != null) {
+      setState(() => _receiptImage = File(response.file!.path));
+    }
+  }
+
+  Future<void> _takePhoto() async {
+    final XFile? picked = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85,
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _receiptImage = File(picked.path));
+  }
 
   @override
   void dispose() {
     _amountController.dispose();
     super.dispose();
-  }
-
-  Future<void> _takePhoto() async {
-    final picker = ImagePicker();
-    final XFile? picked = await picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 85,
-    );
-    if (picked == null) return;
-    setState(() => _receiptImage = File(picked.path));
   }
 
   bool get _canProceed =>
@@ -60,27 +75,29 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                     color: Color(0xFF1F2937))),
             const SizedBox(height: 20),
 
-            // 카메라 버튼 / 미리보기
             GestureDetector(
               onTap: _takePhoto,
               child: Container(
-                height: 220,
                 decoration: BoxDecoration(
                   color: const Color(0xFF1F2937),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 clipBehavior: Clip.antiAlias,
+                constraints: const BoxConstraints(minHeight: 200),
                 child: _receiptImage != null
-                    ? Image.file(_receiptImage!, fit: BoxFit.cover)
-                    : const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.camera_alt, color: Colors.white, size: 52),
-                          SizedBox(height: 12),
-                          Text('눌러서 영수증 촬영',
-                              style: TextStyle(
-                                  color: Colors.white70, fontSize: 18)),
-                        ],
+                    ? Image.file(_receiptImage!, fit: BoxFit.contain, width: double.infinity)
+                    : const SizedBox(
+                        height: 200,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.camera_alt, color: Colors.white, size: 52),
+                            SizedBox(height: 12),
+                            Text('눌러서 영수증 촬영',
+                                style: TextStyle(
+                                    color: Colors.white70, fontSize: 18)),
+                          ],
+                        ),
                       ),
               ),
             ),
@@ -96,7 +113,6 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
 
             const SizedBox(height: 24),
 
-            // 금액 입력
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../providers/app_provider.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/big_button.dart';
 import 'department_screen.dart';
+import 'receipt_screen.dart';
 import 'approver_screen.dart';
 import 'manager_dashboard.dart';
 
@@ -28,6 +30,27 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadUsers();
     _initNotifications();
+    _restoreSessionIfNeeded();
+  }
+
+  // 카메라 촬영 중 앱 재시작 시 이전 화면으로 복구
+  Future<void> _restoreSessionIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('session_user_id');
+    final department = prefs.getString('session_department');
+    if (userId == null || department == null) return;
+
+    await prefs.remove('session_user_id');
+    await prefs.remove('session_department');
+
+    final users = await _firestoreService.getUsers();
+    final user = users.where((u) => u.id == userId).firstOrNull;
+    if (user == null || !mounted) return;
+
+    context.read<AppProvider>().setUser(user);
+    context.read<AppProvider>().setDepartment(department);
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => const ReceiptScreen()));
   }
 
   @override
