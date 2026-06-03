@@ -4,7 +4,7 @@ import '../models/expense_model.dart';
 import '../providers/app_provider.dart';
 import '../services/firestore_service.dart';
 import '../widgets/status_badge.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/receipt_image_viewer.dart';
 
 class MyHistoryScreen extends StatelessWidget {
   const MyHistoryScreen({super.key});
@@ -158,21 +158,13 @@ class _ExpenseDetail extends StatelessWidget {
             _DetailRow('반려 사유', expense.rejectedReason!,
                 valueColor: const Color(0xFFDC2626)),
           const SizedBox(height: 16),
-          if (expense.receiptImageUrl.isNotEmpty)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: expense.receiptImageUrl,
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => Container(
-                    height: 200,
-                    color: Colors.grey.shade200,
-                    child: const Center(
-                        child: CircularProgressIndicator())),
-              ),
-            ),
+          if (expense.receiptImageUrl.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            const Text('영수증',
+                style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
+            const SizedBox(height: 8),
+            ReceiptImageViewer(imageUrl: expense.receiptImageUrl),
+          ],
         ],
       ),
     );

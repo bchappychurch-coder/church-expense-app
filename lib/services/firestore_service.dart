@@ -34,6 +34,17 @@ class FirestoreService {
     await _db.collection('users').doc(userId).update({'fcmToken': token});
   }
 
+  // ── PIN 관리 ─────────────────────────────────────────
+
+  Future<String> getPin() async {
+    final doc = await _db.collection('settings').doc('security').get();
+    return doc.data()?['pin'] as String? ?? '1234';
+  }
+
+  Future<void> updatePin(String pin) async {
+    await _db.collection('settings').doc('security').set({'pin': pin});
+  }
+
   // ── 부서 관리 ────────────────────────────────────────
 
   static const _defaultDepartments = ['사업부', '전도국', '선교국', '기타 선교회'];
@@ -161,6 +172,10 @@ class FirestoreService {
       'status': 'completed',
       'completedAt': Timestamp.now(),
     });
+  }
+
+  Future<void> updateExpenseAmount(String expenseId, int amount) async {
+    await _db.collection('expenses').doc(expenseId).update({'amount': amount});
   }
 
   // 상태별 건수 스트림 (담당자 대시보드 요약용)

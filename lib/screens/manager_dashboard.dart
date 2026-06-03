@@ -6,6 +6,7 @@ import '../models/expense_model.dart';
 import '../providers/app_provider.dart';
 import '../services/firestore_service.dart';
 import '../widgets/status_badge.dart';
+import '../widgets/receipt_image_viewer.dart';
 import 'department_screen.dart';
 
 class ManagerDashboard extends StatelessWidget {
@@ -237,6 +238,45 @@ class _ManagerDetail extends StatefulWidget {
 class _ManagerDetailState extends State<_ManagerDetail> {
   bool _processing = false;
 
+  Future<void> _editAmount() async {
+    final controller = TextEditingController(
+        text: widget.expense.amount.toString());
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('금액 수정', style: TextStyle(fontSize: 18)),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          decoration: const InputDecoration(
+            suffixText: '원',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1)),
+            child: const Text('저장',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final newAmount = int.tryParse(controller.text.replaceAll(',', ''));
+    if (newAmount == null || newAmount <= 0) return;
+    await widget.service.updateExpenseAmount(widget.expense.id!, newAmount);
+    if (mounted) Navigator.pop(context);
+  }
+
   Future<void> _complete() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -298,7 +338,27 @@ class _ManagerDetailState extends State<_ManagerDetail> {
           _Row('부서', e.department),
           _Row('용도', e.purpose),
           _Row('내용', e.description),
-          _Row('금액', e.formattedAmount),
+          Row(
+            children: [
+              const SizedBox(
+                width: 56,
+                child: Text('금액',
+                    style: TextStyle(fontSize: 15, color: Color(0xFF9CA3AF))),
+              ),
+              Expanded(
+                child: Text(e.formattedAmount,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w600)),
+              ),
+              TextButton.icon(
+                onPressed: _editAmount,
+                icon: const Icon(Icons.edit, size: 16),
+                label: const Text('수정', style: TextStyle(fontSize: 14)),
+                style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF6366F1)),
+              ),
+            ],
+          ),
           _Row('신청일', e.formattedDate),
           const Divider(height: 24),
 
@@ -328,16 +388,13 @@ class _ManagerDetailState extends State<_ManagerDetail> {
           ),
 
           const SizedBox(height: 12),
-          if (e.receiptImageUrl.isNotEmpty)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: e.receiptImageUrl,
-                height: 160,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
+          if (e.receiptImageUrl.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            const Text('영수증',
+                style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
+            const SizedBox(height: 8),
+            ReceiptImageViewer(imageUrl: e.receiptImageUrl),
+          ],
           const SizedBox(height: 20),
 
           // 송금완료 버튼 (approved 상태일 때만)
@@ -413,6 +470,49 @@ class _DepartmentSettingsState extends State<_DepartmentSettings> {
     super.dispose();
   }
 
+  Future<void> _changePin() async {
+    final controller = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('PIN 번호 변경'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          obscureText: true,
+          maxLength: 6,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 24, letterSpacing: 8),
+          decoration: const InputDecoration(
+            counterText: '',
+            hintText: '새 PIN 입력',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1)),
+            child: const Text('저장',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || controller.text.length < 4) return;
+    await _service.updatePin(controller.text);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PIN이 변경되었습니다')),
+      );
+    }
+  }
+
   Future<void> _add() async {
     final name = _controller.text.trim();
     if (name.isEmpty) return;
@@ -483,6 +583,17 @@ class _DepartmentSettingsState extends State<_DepartmentSettings> {
                     .toList(),
               );
             },
+          ),
+          const Divider(),
+          const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('PIN 번호 변경',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            trailing: TextButton(
+              onPressed: _changePin,
+              child: const Text('변경', style: TextStyle(color: Color(0xFF6366F1))),
+            ),
           ),
           const Divider(),
           const SizedBox(height: 8),

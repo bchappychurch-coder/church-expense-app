@@ -1,4 +1,4 @@
-package com.church.church_expense_app
+package com.church.expense_app
 
 import io.flutter.embedding.android.FlutterActivity
 

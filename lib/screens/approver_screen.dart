@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/receipt_image_viewer.dart';
 import 'package:provider/provider.dart';
 import '../models/expense_model.dart';
 import '../providers/app_provider.dart';
@@ -282,16 +282,12 @@ class _ApprovalDetailState extends State<_ApprovalDetail> {
           _Row('금액', e.formattedAmount),
           _Row('계좌', '${e.bankName} ${e.bankAccount}'),
           const SizedBox(height: 16),
-          if (e.receiptImageUrl.isNotEmpty)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: e.receiptImageUrl,
-                height: 180,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
+          if (e.receiptImageUrl.isNotEmpty) ...[
+            const Text('영수증',
+                style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
+            const SizedBox(height: 8),
+            ReceiptImageViewer(imageUrl: e.receiptImageUrl),
+          ],
           const SizedBox(height: 20),
           if (!_processing)
             Row(

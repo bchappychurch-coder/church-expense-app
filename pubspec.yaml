@@ -15,9 +15,6 @@ dependencies:
   firebase_storage: ^12.0.0
   firebase_messaging: ^15.0.0
 
-  # OCR
-  google_mlkit_text_recognition: ^0.13.0
-
   # 카메라 / 이미지
   image_picker: ^1.1.0
   cached_network_image: ^3.3.0
