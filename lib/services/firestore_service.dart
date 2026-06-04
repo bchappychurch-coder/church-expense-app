@@ -5,6 +5,46 @@ import '../models/expense_model.dart';
 class FirestoreService {
   final _db = FirebaseFirestore.instance;
 
+  static const _defaultPurposes = ['식비', '교통비', '소모품', '행사비', '봉사활동', '기타'];
+
+  // ── 앱 설정 (config/app) ─────────────────────────────
+
+  Future<Map<String, dynamic>> _getConfigDoc() async {
+    final doc = await _db.collection('config').doc('app').get();
+    return doc.exists ? (doc.data() as Map<String, dynamic>) : {};
+  }
+
+  Future<List<String>> getPurposes() async {
+    final data = await _getConfigDoc();
+    if (data['purposes'] == null) return List<String>.from(_defaultPurposes);
+    return List<String>.from(data['purposes']);
+  }
+
+  Future<void> updatePurposes(List<String> purposes) async {
+    await _db.collection('config').doc('app')
+        .set({'purposes': purposes}, SetOptions(merge: true));
+  }
+
+  Future<List<String>> getApproverIds() async {
+    final data = await _getConfigDoc();
+    return List<String>.from(data['approverIds'] ?? []);
+  }
+
+  Future<void> updateApproverIds(List<String> ids) async {
+    await _db.collection('config').doc('app')
+        .set({'approverIds': ids}, SetOptions(merge: true));
+  }
+
+  Future<String> getAdminPassword() async {
+    final data = await _getConfigDoc();
+    return data['adminPassword'] as String? ?? '0000';
+  }
+
+  Future<void> updateAdminPassword(String password) async {
+    await _db.collection('config').doc('app')
+        .set({'adminPassword': password}, SetOptions(merge: true));
+  }
+
   // ── 사용자 ──────────────────────────────────────────
 
   Future<List<UserModel>> getUsers() async {
@@ -34,60 +74,56 @@ class FirestoreService {
     await _db.collection('users').doc(userId).update({'fcmToken': token});
   }
 
-  // ── PIN 관리 ─────────────────────────────────────────
-
-  Future<String> getPin() async {
-    final doc = await _db.collection('settings').doc('security').get();
-    return doc.data()?['pin'] as String? ?? '1234';
-  }
-
-  Future<void> updatePin(String pin) async {
-    await _db.collection('settings').doc('security').set({'pin': pin});
-  }
-
-  // ── 부서 관리 ────────────────────────────────────────
-
-  static const _defaultDepartments = ['사업부', '전도국', '선교국', '기타 선교회'];
-
-  Stream<List<String>> streamDepartments() {
-    return _db.collection('settings').doc('departments').snapshots().map((doc) {
-      if (!doc.exists) return _defaultDepartments;
-      final list = doc.data()?['list'];
-      if (list is List) return List<String>.from(list);
-      return _defaultDepartments;
+  Future<void> saveUserAccounts(String userId, List accounts) async {
+    await _db.collection('users').doc(userId).update({
+      'accounts': accounts.map((a) => a.toMap()).toList(),
     });
   }
 
-  Future<void> addDepartment(String name) async {
-    final ref = _db.collection('settings').doc('departments');
-    final doc = await ref.get();
-    if (!doc.exists) {
-      await ref.set({'list': [..._defaultDepartments, name]});
-    } else {
-      final current = List<String>.from(doc.data()?['list'] ?? _defaultDepartments);
-      if (!current.contains(name)) {
-        current.add(name);
-        await ref.update({'list': current});
-      }
-    }
+  Future<String> createUser({
+    required String name,
+    required String phone,
+    required String role,
+  }) async {
+    final ref = await _db.collection('users').add({
+      'name': name,
+      'phone': phone,
+      'role': role,
+      'accounts': [],
+      'fcmToken': '',
+    });
+    return ref.id;
   }
 
-  Future<void> deleteDepartment(String name) async {
-    final ref = _db.collection('settings').doc('departments');
-    final doc = await ref.get();
-    final current = List<String>.from(doc.data()?['list'] ?? _defaultDepartments);
-    current.remove(name);
-    await ref.set({'list': current});
+  Future<void> updateUser(String userId, {
+    required String name,
+    required String phone,
+    required String role,
+  }) async {
+    await _db.collection('users').doc(userId).update({
+      'name': name,
+      'phone': phone,
+      'role': role,
+    });
+  }
+
+  Future<void> deleteUser(String userId) async {
+    await _db.collection('users').doc(userId).delete();
   }
 
   // ── 지출 신청 ────────────────────────────────────────
 
   Future<String> createExpense(ExpenseModel expense) async {
-    final approvers = await getApprovers();
-    final data = expense.toMap();
+    // config 결재자 우선, 없으면 role 기반 fallback
+    List<String> approverIds = await getApproverIds();
+    if (approverIds.isEmpty) {
+      final approvers = await getApprovers();
+      approverIds = approvers.map((u) => u.id).toList();
+    }
 
-    if (approvers.isNotEmpty) data['approver1Id'] = approvers[0].id;
-    if (approvers.length > 1) data['approver2Id'] = approvers[1].id;
+    final data = expense.toMap();
+    if (approverIds.isNotEmpty) data['approver1Id'] = approverIds[0];
+    if (approverIds.length > 1) data['approver2Id'] = approverIds[1];
 
     final ref = await _db.collection('expenses').add(data);
     return ref.id;
@@ -172,10 +208,6 @@ class FirestoreService {
       'status': 'completed',
       'completedAt': Timestamp.now(),
     });
-  }
-
-  Future<void> updateExpenseAmount(String expenseId, int amount) async {
-    await _db.collection('expenses').doc(expenseId).update({'amount': amount});
   }
 
   // 상태별 건수 스트림 (담당자 대시보드 요약용)

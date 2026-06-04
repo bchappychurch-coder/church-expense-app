@@ -1,11 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'purpose_screen.dart';
+import '../providers/app_provider.dart';
+import 'account_screen.dart';
 
 class ReceiptScreen extends StatefulWidget {
-  const ReceiptScreen({super.key});
+  final String? initialImagePath;
+  const ReceiptScreen({super.key, this.initialImagePath});
 
   @override
   State<ReceiptScreen> createState() => _ReceiptScreenState();
@@ -14,29 +17,16 @@ class ReceiptScreen extends StatefulWidget {
 class _ReceiptScreenState extends State<ReceiptScreen> {
   File? _receiptImage;
   final _amountController = TextEditingController();
-  final _picker = ImagePicker();
+  bool _processing = false;
 
   @override
   void initState() {
     super.initState();
-    _recoverLostImage();
-  }
-
-  Future<void> _recoverLostImage() async {
-    final response = await _picker.retrieveLostData();
-    if (response.isEmpty || !mounted) return;
-    if (response.file != null) {
-      setState(() => _receiptImage = File(response.file!.path));
+    if (widget.initialImagePath != null && widget.initialImagePath!.isNotEmpty) {
+      _receiptImage = File(widget.initialImagePath!);
+      _processing = true;
+      _runOcr(widget.initialImagePath!);
     }
-  }
-
-  Future<void> _takePhoto() async {
-    final XFile? picked = await _picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 85,
-    );
-    if (picked == null || !mounted) return;
-    setState(() => _receiptImage = File(picked.path));
   }
 
   @override
@@ -45,10 +35,52 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     super.dispose();
   }
 
+  Future<void> _takePhoto() async {
+    // 카메라 실행 전 상태 저장 (앱 재시작 대비)
+    final user = context.read<AppProvider>().currentUser;
+    final dept = context.read<AppProvider>().selectedDepartment;
+    if (user != null && dept != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('pending_user_id', user.id);
+      await prefs.setString('pending_department', dept);
+    }
+
+    final picker = ImagePicker();
+    final XFile? picked = await picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+
+    // 카메라 성공 시 저장된 임시 상태 삭제
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('pending_user_id');
+    await prefs.remove('pending_department');
+
+    setState(() { _receiptImage = File(picked.path); _processing = true; });
+    await _runOcr(picked.path);
+  }
+
+  Future<void> _pickFromGallery() async {
+    final picker = ImagePicker();
+    final XFile? picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+    setState(() { _receiptImage = File(picked.path); _processing = true; });
+    await _runOcr(picked.path);
+  }
+
+  Future<void> _runOcr(String path) async {
+    if (mounted) setState(() => _processing = false);
+  }
+
   bool get _canProceed =>
-      _receiptImage != null &&
+      !_processing &&
       _amountController.text.trim().isNotEmpty &&
-      (int.tryParse(_amountController.text.replaceAll(',', '')) ?? 0) > 0;
+      int.tryParse(_amountController.text.replaceAll(',', '')) != null &&
+      int.parse(_amountController.text.replaceAll(',', '')) > 0;
 
   @override
   Widget build(BuildContext context) {
@@ -68,94 +100,148 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
           children: [
             _StepBar(current: 2),
             const SizedBox(height: 28),
-            const Text('영수증을 촬영해 주세요',
+            const Text('영수증 사진을 선택해 주세요',
                 style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1F2937))),
             const SizedBox(height: 20),
 
-            GestureDetector(
-              onTap: _takePhoto,
-              child: Container(
+            // 영수증 미리보기
+            if (_receiptImage != null)
+              Container(
+                height: 200,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1F2937),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 clipBehavior: Clip.antiAlias,
-                constraints: const BoxConstraints(minHeight: 200),
-                child: _receiptImage != null
-                    ? Image.file(_receiptImage!, fit: BoxFit.contain, width: double.infinity)
-                    : const SizedBox(
-                        height: 200,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.camera_alt, color: Colors.white, size: 52),
-                            SizedBox(height: 12),
-                            Text('눌러서 영수증 촬영',
-                                style: TextStyle(
-                                    color: Colors.white70, fontSize: 18)),
-                          ],
-                        ),
-                      ),
+                child: Image.file(_receiptImage!, fit: BoxFit.contain, width: double.infinity),
+              )
+            else
+              Container(
+                height: 160,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE5E7EB), width: 2),
+                ),
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.receipt_long, color: Color(0xFF9CA3AF), size: 48),
+                    SizedBox(height: 8),
+                    Text('아래 버튼으로 영수증을 추가해주세요',
+                        style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 15)),
+                  ],
+                ),
               ),
-            ),
 
-            if (_receiptImage != null) ...[
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: _takePhoto,
-                icon: const Icon(Icons.refresh),
-                label: const Text('다시 촬영하기', style: TextStyle(fontSize: 16)),
-              ),
-            ],
+            const SizedBox(height: 12),
 
-            const SizedBox(height: 24),
-
+            // 안내 문구
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: const Color(0xFFFEF9C3),
-                border: Border.all(color: const Color(0xFFFBBF24), width: 2),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFBBF24)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: const Row(
                 children: [
-                  const Text('결제 금액 (원)',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF92400E))),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _amountController,
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1F2937)),
-                    decoration: const InputDecoration(
-                      hintText: '금액을 입력해 주세요',
-                      hintStyle: TextStyle(
-                          fontSize: 18, color: Color(0xFF9CA3AF)),
-                      border: InputBorder.none,
-                      suffixText: '원',
-                      suffixStyle: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF6B7280)),
+                  Icon(Icons.info_outline, color: Color(0xFF92400E), size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '카메라 앱으로 먼저 사진 찍은 후\n아래 버튼으로 사진을 선택해 주세요',
+                      style: TextStyle(fontSize: 14, color: Color(0xFF92400E)),
                     ),
-                    onChanged: (_) => setState(() {}),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 12),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _pickFromGallery,
+                icon: const Icon(Icons.photo_library, color: Colors.white),
+                label: Text(
+                  _receiptImage == null ? '영수증 사진 선택' : '사진 다시 선택',
+                  style: const TextStyle(fontSize: 17, color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // OCR 결과 / 금액 입력
+            if (_processing)
+              const Center(
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 12),
+                    Text('금액을 인식하는 중...', style: TextStyle(fontSize: 16)),
+                  ],
+                ),
+              )
+            else ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF9C3),
+                  border: Border.all(color: const Color(0xFFFBBF24), width: 2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('결제 금액 (원)',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF92400E))),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _amountController,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1F2937)),
+                      decoration: const InputDecoration(
+                        hintText: '금액을 입력해 주세요',
+                        hintStyle: TextStyle(fontSize: 18, color: Color(0xFF9CA3AF)),
+                        border: InputBorder.none,
+                        suffixText: '원',
+                        suffixStyle: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF6B7280)),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    if (_receiptImage != null)
+                      const Text(
+                        '금액이 맞지 않으면 직접 수정해 주세요',
+                        style: TextStyle(fontSize: 13, color: Color(0xFF92400E)),
+                      ),
+                  ],
+                ),
+              ),
+            ],
 
             const SizedBox(height: 32),
 
+            // 다음 버튼
             SizedBox(
               height: 60,
               child: ElevatedButton(
@@ -166,8 +252,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => PurposeScreen(
-                              receiptImagePath: _receiptImage!.path,
+                            builder: (_) => AccountScreen(
+                              receiptImagePath: _receiptImage?.path ?? '',
                               amount: amount,
                             ),
                           ),

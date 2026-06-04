@@ -5,16 +5,19 @@ import '../providers/app_provider.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/big_button.dart';
-import 'my_history_screen.dart';
 
 class PurposeScreen extends StatefulWidget {
   final String receiptImagePath;
   final int amount;
+  final String bankName;
+  final String accountNumber;
 
   const PurposeScreen({
     super.key,
     required this.receiptImagePath,
     required this.amount,
+    required this.bankName,
+    required this.accountNumber,
   });
 
   @override
@@ -28,8 +31,16 @@ class _PurposeScreenState extends State<PurposeScreen> {
 
   String? _selectedPurpose;
   bool _submitting = false;
+  List<String> _purposes = [];
+  bool _loadingPurposes = true;
 
-  static const _purposes = ['식비', '교통비', '소모품', '행사비', '봉사활동', '기타'];
+  @override
+  void initState() {
+    super.initState();
+    _firestoreService.getPurposes().then((list) {
+      if (mounted) setState(() { _purposes = list; _loadingPurposes = false; });
+    });
+  }
 
   @override
   void dispose() {
@@ -63,8 +74,8 @@ class _PurposeScreenState extends State<PurposeScreen> {
         description: _descController.text.trim(),
         amount: widget.amount,
         receiptImageUrl: imageUrl,
-        bankName: user.bankName,
-        bankAccount: user.bankAccount,
+        bankName: widget.bankName,
+        bankAccount: widget.accountNumber,
         status: 'pending',
         createdAt: DateTime.now() as dynamic,
       ));
@@ -147,7 +158,7 @@ class _PurposeScreenState extends State<PurposeScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 진행 단계
-            _StepBar(current: 3),
+            _StepBar(current: 4),
             const SizedBox(height: 28),
 
             const Text('사용 용도를 선택해 주세요',
@@ -158,23 +169,26 @@ class _PurposeScreenState extends State<PurposeScreen> {
             const SizedBox(height: 20),
 
             // 용도 버튼 그리드
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 3,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 1.8,
-              children: _purposes.map((p) {
-                return BigButton(
-                  label: p,
-                  selected: _selectedPurpose == p,
-                  color: const Color(0xFFEDE9FE),
-                  borderColor: const Color(0xFFA78BFA),
-                  onTap: () => setState(() => _selectedPurpose = p),
-                );
-              }).toList(),
-            ),
+            if (_loadingPurposes)
+              const Center(child: CircularProgressIndicator())
+            else
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 3,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 1.8,
+                children: _purposes.map((p) {
+                  return BigButton(
+                    label: p,
+                    selected: _selectedPurpose == p,
+                    color: const Color(0xFFEDE9FE),
+                    borderColor: const Color(0xFFA78BFA),
+                    onTap: () => setState(() => _selectedPurpose = p),
+                  );
+                }).toList(),
+              ),
 
             const SizedBox(height: 24),
 
@@ -241,6 +255,10 @@ class _PurposeScreenState extends State<PurposeScreen> {
                   _SummaryRow('신청자', user.name),
                   _SummaryRow('부서', department),
                   _SummaryRow('금액', '$formattedAmount원'),
+                  _SummaryRow('은행', widget.bankName +
+                      (widget.accountNumber.isNotEmpty
+                          ? '  ${widget.accountNumber}'
+                          : '')),
                   if (_selectedPurpose != null)
                     _SummaryRow('용도', _selectedPurpose!),
                   if (_descController.text.trim().isNotEmpty)

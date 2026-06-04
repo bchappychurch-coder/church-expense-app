@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
+import '../models/bank_account.dart';
 
 class AppProvider extends ChangeNotifier {
   UserModel? _currentUser;
@@ -16,6 +17,12 @@ class AppProvider extends ChangeNotifier {
 
   void setDepartment(String department) {
     _selectedDepartment = department;
+    notifyListeners();
+  }
+
+  void updateUserAccounts(List<BankAccount> accounts) {
+    if (_currentUser == null) return;
+    _currentUser = _currentUser!.copyWith(accounts: accounts);
     notifyListeners();
   }
 

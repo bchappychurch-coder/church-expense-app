@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../providers/app_provider.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/big_button.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/password_gate.dart';
+import 'admin_settings_screen.dart';
 import 'department_screen.dart';
-import 'receipt_screen.dart';
 import 'approver_screen.dart';
 import 'manager_dashboard.dart';
+import 'receipt_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,7 +24,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _firestoreService = FirestoreService();
   final _notificationService = NotificationService();
-  final _nameController = TextEditingController();
   List<UserModel> _users = [];
   bool _loading = true;
 
@@ -30,142 +32,173 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadUsers();
     _initNotifications();
-    _restoreSessionIfNeeded();
-  }
-
-  // 카메라 촬영 중 앱 재시작 시 이전 화면으로 복구
-  Future<void> _restoreSessionIfNeeded() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('session_user_id');
-    final department = prefs.getString('session_department');
-    if (userId == null || department == null) return;
-
-    await prefs.remove('session_user_id');
-    await prefs.remove('session_department');
-
-    final users = await _firestoreService.getUsers();
-    final user = users.where((u) => u.id == userId).firstOrNull;
-    if (user == null || !mounted) return;
-
-    context.read<AppProvider>().setUser(user);
-    context.read<AppProvider>().setDepartment(department);
-    Navigator.push(context,
-        MaterialPageRoute(builder: (_) => const ReceiptScreen()));
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  void _onDirectNameSubmit() {
-    final name = _nameController.text.trim();
-    if (name.isEmpty) return;
-    final existing = _users.where((u) => u.name == name).firstOrNull;
-    if (existing != null) {
-      _onUserSelected(existing);
-    } else {
-      final tempUser = UserModel(
-        id: 'temp_$name',
-        name: name,
-        phone: '',
-        bankName: '',
-        bankAccount: '',
-        role: 'member',
-      );
-      _onUserSelected(tempUser);
-    }
+    _checkCameraResume();
   }
 
   Future<void> _loadUsers() async {
-    final users = await _firestoreService.getUsers();
-    if (mounted) setState(() { _users = users; _loading = false; });
-  }
-
-  Future<void> _initNotifications() async {
-    final token = await _notificationService.initialize();
-    // 토큰은 사용자 선택 후 저장 (이 시점에서는 아직 사용자 미선택)
-    debugPrint('FCM Token: $token');
-  }
-
-  void _onUserSelected(UserModel user) {
-    // 토큰 업데이트는 백그라운드에서 (UI 블로킹 방지)
-    _notificationService.getToken().then((token) {
-      if (token != null) _firestoreService.updateFcmToken(user.id, token);
-    }).catchError((_) {});
-
-    context.read<AppProvider>().setUser(user);
-
-    if (user.isManager || user.isApprover) {
-      _showPinDialog(user);
-    } else {
-      Navigator.push(context,
-          MaterialPageRoute(builder: (_) => const DepartmentScreen()));
+    try {
+      final users = await _firestoreService.getUsers();
+      if (mounted) setState(() { _users = users; _loading = false; });
+    } catch (e) {
+      debugPrint('사용자 로드 오류: $e');
+      if (mounted) setState(() { _loading = false; });
     }
   }
 
-  void _showPinDialog(UserModel user) {
-    final pinController = TextEditingController();
-    showDialog(
+  Future<void> _initNotifications() async {
+    try {
+      final token = await _notificationService.initialize();
+      debugPrint('FCM Token: $token');
+    } catch (e) {
+      debugPrint('FCM 초기화 오류 (무시): $e');
+    }
+  }
+
+  Future<void> _checkCameraResume() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('pending_user_id');
+      final dept = prefs.getString('pending_department');
+      if (userId == null || dept == null) return;
+
+      // 카메라에서 돌아온 이미지 확인
+      final lostData = await ImagePicker().retrieveLostData();
+      if (lostData.file == null) return;
+
+      await _loadUsers();
+      if (!mounted) return;
+
+      final user = _users.firstWhere(
+        (u) => u.id == userId,
+        orElse: () => _users.first,
+      );
+
+      prefs.remove('pending_user_id');
+      prefs.remove('pending_department');
+
+      context.read<AppProvider>().setUser(user);
+      context.read<AppProvider>().setDepartment(dept);
+
+      Navigator.push(context, MaterialPageRoute(
+        builder: (_) => ReceiptScreen(initialImagePath: lostData.file!.path),
+      ));
+    } catch (_) {}
+  }
+
+  void _showRegisterDialog() {
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+
+    showModalBottomSheet(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('${user.name}님 인증',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        content: Column(
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 24, right: 24, top: 24,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+        ),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('PIN 번호를 입력하세요',
-                style: TextStyle(fontSize: 15, color: Color(0xFF6B7280))),
-            const SizedBox(height: 16),
+            const Text('이름 등록',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            const Text('이름과 전화번호를 입력해주세요',
+                style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
+            const SizedBox(height: 20),
             TextField(
-              controller: pinController,
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 6,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 24, letterSpacing: 8),
+              controller: nameCtrl,
+              autofocus: true,
+              style: const TextStyle(fontSize: 18),
               decoration: InputDecoration(
-                counterText: '',
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                labelText: '이름',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
                 ),
               ),
             ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: phoneCtrl,
+              keyboardType: TextInputType.phone,
+              style: const TextStyle(fontSize: 18),
+              decoration: InputDecoration(
+                labelText: '전화번호 (선택)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () async {
+                final name = nameCtrl.text.trim();
+                if (name.isEmpty) return;
+
+                // Firestore에서 최신 목록으로 중복 확인
+                final latestUsers = await _firestoreService.getUsers();
+                final exists = latestUsers.any((u) => u.name == name);
+                if (exists) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text('"$name"은 이미 등록된 이름입니다'),
+                        backgroundColor: const Color(0xFFDC2626),
+                      ),
+                    );
+                  }
+                  return;
+                }
+
+                await _firestoreService.createUser(
+                  name: name,
+                  phone: phoneCtrl.text.trim(),
+                  role: 'member',
+                );
+                await _loadUsers();
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('등록',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white)),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소', style: TextStyle(fontSize: 16)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final entered = pinController.text;
-              Navigator.pop(context);
-              final correctPin = await _firestoreService.getPin();
-              if (!mounted) return;
-              if (entered == correctPin) {
-                _showRoleDialog(user);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('PIN 번호가 틀렸습니다')),
-                );
-                context.read<AppProvider>().clearUser();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6366F1)),
-            child: const Text('확인',
-                style: TextStyle(fontSize: 16, color: Colors.white)),
-          ),
-        ],
       ),
     );
+  }
+
+  void _onUserSelected(UserModel user) async {
+    final token = await _notificationService.getToken();
+    if (token != null) {
+      await _firestoreService.updateFcmToken(user.id, token);
+    }
+    if (!mounted) return;
+    context.read<AppProvider>().setUser(user);
+
+    // 승인자·담당자도 지출 신청 가능 → 역할 선택 다이얼로그
+    if (user.isManager || user.isApprover) {
+      _showRoleDialog(user);
+    } else {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const DepartmentScreen()));
+    }
   }
 
   void _showRoleDialog(UserModel user) {
@@ -215,15 +248,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 onPressed: () {
                   Navigator.pop(context);
-                  if (user.isManager) {
-                    Navigator.push(context,
-                        MaterialPageRoute(
-                            builder: (_) => const ManagerDashboard()));
-                  } else {
-                    Navigator.push(context,
-                        MaterialPageRoute(
-                            builder: (_) => const ApproverScreen()));
-                  }
+                  showPasswordGate(context, () {
+                    if (user.isManager) {
+                      Navigator.push(context,
+                          MaterialPageRoute(
+                              builder: (_) => const ManagerDashboard()));
+                    } else {
+                      Navigator.push(context,
+                          MaterialPageRoute(
+                              builder: (_) => const ApproverScreen()));
+                    }
+                  });
                 },
               ),
               const SizedBox(height: 4),
@@ -250,6 +285,19 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         centerTitle: true,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.white),
+            tooltip: '관리자 설정',
+            onPressed: () => showPasswordGate(context, () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminSettingsScreen()),
+              ).then((_) => _loadUsers());
+            }),
+          ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -271,7 +319,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     '이름을 선택하면 지출 신청 화면으로 이동합니다',
                     style: TextStyle(fontSize: 15, color: Color(0xFF9CA3AF)),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _showRegisterDialog,
+                      icon: const Icon(Icons.person_add, color: Color(0xFF6366F1)),
+                      label: const Text('내 이름 등록하기',
+                          style: TextStyle(fontSize: 16, color: Color(0xFF6366F1))),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: const BorderSide(color: Color(0xFF6366F1)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Expanded(
                     child: GridView.builder(
                       gridDelegate:
@@ -297,57 +361,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '목록에 없으면 직접 입력하세요',
-                    style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _nameController,
-                          onSubmitted: (_) => _onDirectNameSubmit(),
-                          decoration: InputDecoration(
-                            hintText: '이름 입력',
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                  color: Color(0xFFD1D5DB)),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                  color: Color(0xFF6366F1), width: 2),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      ElevatedButton(
-                        onPressed: _onDirectNameSubmit,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 14),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          minimumSize: Size.zero,
-                        ),
-                        child: const Text('확인',
-                            style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
                 ],
               ),
             ),

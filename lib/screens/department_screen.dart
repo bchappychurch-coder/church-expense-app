@@ -5,6 +5,7 @@ import '../providers/app_provider.dart';
 import '../services/firestore_service.dart';
 import '../widgets/big_button.dart';
 import 'receipt_screen.dart';
+import 'settings_screen.dart';
 
 class DepartmentScreen extends StatelessWidget {
   const DepartmentScreen({super.key});
@@ -24,6 +25,18 @@ class DepartmentScreen extends StatelessWidget {
         ),
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.white),
+            tooltip: '계좌 관리',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ).then((_) {
+              // 계좌 변경 시 AppProvider 업데이트는 SettingsScreen에서 처리됨
+            }),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(24),
