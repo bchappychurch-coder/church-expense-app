@@ -57,15 +57,17 @@ class DepartmentScreen extends StatelessWidget {
               child: StreamBuilder<List<String>>(
                 stream: service.streamDepartments(),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
+                  if (snapshot.hasError || (!snapshot.hasData && snapshot.connectionState == ConnectionState.waiting)) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  final departments = snapshot.data!;
+                  final raw = snapshot.data ?? ['사업부', '전도국', '선교국', '기타 선교회'];
+                  final others = raw.where((d) => d != '전교인').toList()..sort();
+                  final departments = [...raw.where((d) => d == '전교인'), ...others];
                   return GridView.count(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 14,
-                    mainAxisSpacing: 14,
-                    childAspectRatio: 1.6,
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: 1.8,
                     children: departments.map((dept) {
                       return BigButton(
                         label: dept,

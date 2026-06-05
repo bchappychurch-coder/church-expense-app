@@ -6,6 +6,7 @@ class FirestoreService {
   final _db = FirebaseFirestore.instance;
 
   static const _defaultPurposes = ['식비', '교통비', '소모품', '행사비', '봉사활동', '기타'];
+  static const _defaultDepartments = ['사업부', '전도국', '선교국', '기타 선교회'];
 
   // ── 앱 설정 (config/app) ─────────────────────────────
 
@@ -43,6 +44,51 @@ class FirestoreService {
   Future<void> updateAdminPassword(String password) async {
     await _db.collection('config').doc('app')
         .set({'adminPassword': password}, SetOptions(merge: true));
+  }
+
+  Future<void> updatePin(String pin) => updateAdminPassword(pin);
+
+  // ── 부서 관리 ─────────────────────────────────────────
+
+  Future<List<String>> getDepartments() async {
+    final data = await _getConfigDoc();
+    final list = data['departments'];
+    if (list == null || (list as List).isEmpty) return List<String>.from(_defaultDepartments);
+    return List<String>.from(list);
+  }
+
+  Stream<List<String>> streamDepartments() {
+    return _db.collection('config').doc('app').snapshots().map((doc) {
+      if (!doc.exists) return List<String>.from(_defaultDepartments);
+      final data = doc.data() as Map<String, dynamic>;
+      final list = data['departments'];
+      if (list == null || (list as List).isEmpty) return List<String>.from(_defaultDepartments);
+      return List<String>.from(list);
+    });
+  }
+
+  Future<void> addDepartment(String name) async {
+    final data = await _getConfigDoc();
+    final existing = data['departments'];
+    final departments = existing != null && (existing as List).isNotEmpty
+        ? List<String>.from(existing)
+        : List<String>.from(_defaultDepartments);
+    if (!departments.contains(name)) {
+      departments.add(name);
+      await _db.collection('config').doc('app')
+          .set({'departments': departments}, SetOptions(merge: true));
+    }
+  }
+
+  Future<void> deleteDepartment(String name) async {
+    final data = await _getConfigDoc();
+    final existing = data['departments'];
+    final departments = existing != null && (existing as List).isNotEmpty
+        ? List<String>.from(existing)
+        : List<String>.from(_defaultDepartments);
+    departments.remove(name);
+    await _db.collection('config').doc('app')
+        .set({'departments': departments}, SetOptions(merge: true));
   }
 
   // ── 사용자 ──────────────────────────────────────────
@@ -140,10 +186,12 @@ class FirestoreService {
     return _db
         .collection('expenses')
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) =>
-            snap.docs.map((doc) => ExpenseModel.fromFirestore(doc)).toList());
+        .map((snap) {
+          final list = snap.docs.map((doc) => ExpenseModel.fromFirestore(doc)).toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   // 승인자용: 대기 중인 건
@@ -208,6 +256,14 @@ class FirestoreService {
       'status': 'completed',
       'completedAt': Timestamp.now(),
     });
+  }
+
+  Future<void> updateExpenseAmount(String expenseId, int amount) async {
+    await _db.collection('expenses').doc(expenseId).update({'amount': amount});
+  }
+
+  Future<void> deleteExpense(String expenseId) async {
+    await _db.collection('expenses').doc(expenseId).delete();
   }
 
   // 상태별 건수 스트림 (담당자 대시보드 요약용)

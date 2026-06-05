@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/expense_model.dart';
@@ -38,6 +39,7 @@ class _PurposeScreenState extends State<PurposeScreen> {
   void initState() {
     super.initState();
     _firestoreService.getPurposes().then((list) {
+      list.sort();
       if (mounted) setState(() { _purposes = list; _loadingPurposes = false; });
     });
   }
@@ -77,7 +79,7 @@ class _PurposeScreenState extends State<PurposeScreen> {
         bankName: widget.bankName,
         bankAccount: widget.accountNumber,
         status: 'pending',
-        createdAt: DateTime.now() as dynamic,
+        createdAt: Timestamp.now(),
       ));
 
       if (!mounted) return;

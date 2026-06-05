@@ -13,6 +13,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   final _firestoreService = FirestoreService();
 
   List<String> _purposes = [];
+  List<String> _departments = [];
   List<String> _approverIds = [];
   List<UserModel> _allUsers = [];
   bool _loading = true;
@@ -35,12 +36,14 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       _firestoreService.getPurposes(),
       _firestoreService.getApproverIds(),
       _firestoreService.getUsers(),
+      _firestoreService.getDepartments(),
     ]);
     if (!mounted) return;
     setState(() {
       _purposes = results[0] as List<String>;
       _approverIds = results[1] as List<String>;
       _allUsers = results[2] as List<UserModel>;
+      _departments = results[3] as List<String>;
       _loading = false;
     });
   }
@@ -302,6 +305,84 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     );
   }
 
+  // ── 부서 관리 ─────────────────────────────────────
+
+  void _addDepartment() {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('부서 추가'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          style: const TextStyle(fontSize: 18),
+          decoration: InputDecoration(
+            hintText: '예) 청년부',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소', style: TextStyle(color: Color(0xFF6B7280))),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final text = ctrl.text.trim();
+              if (text.isNotEmpty && !_departments.contains(text)) {
+                setState(() => _saving = true);
+                await _firestoreService.addDepartment(text);
+                await _load();
+                if (mounted) setState(() => _saving = false);
+              }
+              if (mounted) Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('추가', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteDepartment(String dept) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('"$dept" 삭제'),
+        content: const Text('이 부서를 삭제할까요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소', style: TextStyle(color: Color(0xFF6B7280))),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              setState(() => _saving = true);
+              await _firestoreService.deleteDepartment(dept);
+              await _load();
+              if (mounted) {
+                setState(() => _saving = false);
+                Navigator.pop(context);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('삭제', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── 비밀번호 변경 ─────────────────────────────────
 
   void _changePassword() {
@@ -462,6 +543,43 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                         );
                       }).toList(),
                     ),
+
+                    const SizedBox(height: 32),
+
+                    // ── 부서 관리 ──
+                    _SectionHeader(
+                      icon: Icons.business,
+                      title: '부서 관리',
+                      trailing: IconButton(
+                        icon: const Icon(Icons.add_circle,
+                            color: Color(0xFF6366F1), size: 28),
+                        onPressed: _addDepartment,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    if (_departments.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Text('부서가 없습니다. + 버튼으로 추가하세요.',
+                            style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
+                      )
+                    else
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _departments.map((d) {
+                          return Chip(
+                            label: Text(d,
+                                style: const TextStyle(
+                                    fontSize: 15, color: Color(0xFF1F2937))),
+                            backgroundColor: const Color(0xFFE0F2FE),
+                            side: const BorderSide(color: Color(0xFF38BDF8)),
+                            deleteIcon: const Icon(Icons.close,
+                                size: 16, color: Color(0xFF0284C7)),
+                            onDeleted: () => _deleteDepartment(d),
+                          );
+                        }).toList(),
+                      ),
 
                     const SizedBox(height: 32),
 

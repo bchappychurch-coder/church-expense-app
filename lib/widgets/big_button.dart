@@ -30,8 +30,7 @@ class BigButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        constraints: const BoxConstraints(minHeight: 56),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: bg,
           border: Border.all(color: border, width: selected ? 2.5 : 1.5),
@@ -45,7 +44,7 @@ class BigButton extends StatelessWidget {
               label,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: selected
                     ? const Color(0xFF3730A3)
@@ -53,11 +52,11 @@ class BigButton extends StatelessWidget {
               ),
             ),
             if (subLabel != null) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 subLabel!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
               ),
             ],
           ],

@@ -26,8 +26,15 @@ class MyHistoryScreen extends StatelessWidget {
       body: StreamBuilder<List<ExpenseModel>>(
         stream: service.getMyExpenses(user.id),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError && !snapshot.hasData) {
+            return const Center(
+              child: Text('데이터를 불러올 수 없습니다.\n인터넷 연결을 확인해주세요.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, color: Color(0xFF9CA3AF))),
+            );
           }
           final expenses = snapshot.data ?? [];
           if (expenses.isEmpty) {

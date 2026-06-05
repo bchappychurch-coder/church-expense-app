@@ -277,6 +277,32 @@ class _ManagerDetailState extends State<_ManagerDetail> {
     if (mounted) Navigator.pop(context);
   }
 
+  Future<void> _delete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('지출 삭제'),
+        content: Text('${widget.expense.userName}님의 지출 신청을 삭제할까요?\n삭제하면 복구할 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소', style: TextStyle(color: Color(0xFF6B7280))),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+            child: const Text('삭제', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _processing = true);
+    await widget.service.deleteExpense(widget.expense.id!);
+    if (mounted) Navigator.pop(context);
+  }
+
   Future<void> _complete() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -418,6 +444,24 @@ class _ManagerDetailState extends State<_ManagerDetail> {
             )
           else if (_processing)
             const Center(child: CircularProgressIndicator()),
+
+          const SizedBox(height: 12),
+          // 삭제 버튼 (담당자 전용)
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: _delete,
+              icon: const Icon(Icons.delete_outline, color: Color(0xFFDC2626)),
+              label: const Text('지출 삭제',
+                  style: TextStyle(color: Color(0xFFDC2626), fontSize: 16)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFFDC2626)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
         ],
       ),
     );

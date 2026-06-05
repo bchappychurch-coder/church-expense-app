@@ -12,6 +12,7 @@ import 'admin_settings_screen.dart';
 import 'department_screen.dart';
 import 'approver_screen.dart';
 import 'manager_dashboard.dart';
+import 'my_history_screen.dart';
 import 'receipt_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -187,18 +188,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onUserSelected(UserModel user) async {
     final token = await _notificationService.getToken();
     if (token != null) {
-      await _firestoreService.updateFcmToken(user.id, token);
+      _firestoreService.updateFcmToken(user.id, token); // await 제거 - 백그라운드로
     }
     if (!mounted) return;
     context.read<AppProvider>().setUser(user);
 
-    // 승인자·담당자도 지출 신청 가능 → 역할 선택 다이얼로그
-    if (user.isManager || user.isApprover) {
-      _showRoleDialog(user);
-    } else {
-      Navigator.push(context,
-          MaterialPageRoute(builder: (_) => const DepartmentScreen()));
-    }
+    // 모든 사용자 → 역할 선택 다이얼로그
+    _showRoleDialog(user);
   }
 
   void _showRoleDialog(UserModel user) {
@@ -235,32 +231,52 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 10),
               ElevatedButton.icon(
-                icon: const Icon(Icons.approval, color: Colors.white),
-                label: Text(
-                  user.isManager ? '전체 현황 보기' : '결재 승인하기',
-                  style: const TextStyle(fontSize: 18, color: Colors.white),
-                ),
+                icon: const Icon(Icons.history, color: Colors.white),
+                label: const Text('내 신청 내역',
+                    style: TextStyle(fontSize: 18, color: Colors.white)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
+                  backgroundColor: const Color(0xFF6366F1),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: () {
                   Navigator.pop(context);
-                  showPasswordGate(context, () {
-                    if (user.isManager) {
-                      Navigator.push(context,
-                          MaterialPageRoute(
-                              builder: (_) => const ManagerDashboard()));
-                    } else {
-                      Navigator.push(context,
-                          MaterialPageRoute(
-                              builder: (_) => const ApproverScreen()));
-                    }
-                  });
+                  Navigator.push(context,
+                      MaterialPageRoute(
+                          builder: (_) => const MyHistoryScreen()));
                 },
               ),
+              if (user.isManager || user.isApprover) ...[
+                const SizedBox(height: 10),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.approval, color: Colors.white),
+                  label: Text(
+                    user.isManager ? '전체 현황 보기' : '결재 승인하기',
+                    style: const TextStyle(fontSize: 18, color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    showPasswordGate(context, () {
+                      if (user.isManager) {
+                        Navigator.push(context,
+                            MaterialPageRoute(
+                                builder: (_) => const ManagerDashboard()));
+                      } else {
+                        Navigator.push(context,
+                            MaterialPageRoute(
+                                builder: (_) => const ApproverScreen()));
+                      }
+                    });
+                  },
+                ),
+              ],
               const SizedBox(height: 4),
             ],
           ),
@@ -337,26 +353,29 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 16),
                   Expanded(
-                    child: GridView.builder(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 2.2,
-                      ),
-                      itemCount: _users.length,
-                      itemBuilder: (context, index) {
-                        final user = _users[index];
-                        final roleLabel = user.isManager
-                            ? '(담당자)'
-                            : user.isApprover
-                                ? '(승인자)'
-                                : '';
-                        return BigButton(
-                          label: user.name,
-                          subLabel: roleLabel.isEmpty ? null : roleLabel,
-                          onTap: () => _onUserSelected(user),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final itemWidth = (constraints.maxWidth - 16) / 3;
+                        return SingleChildScrollView(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _users.map((user) {
+                              final roleLabel = user.isManager
+                                  ? '(담당자)'
+                                  : user.isApprover
+                                      ? '(승인자)'
+                                      : '';
+                              return SizedBox(
+                                width: itemWidth,
+                                child: BigButton(
+                                  label: user.name,
+                                  subLabel: roleLabel.isEmpty ? null : roleLabel,
+                                  onTap: () => _onUserSelected(user),
+                                ),
+                              );
+                            }).toList(),
+                          ),
                         );
                       },
                     ),
