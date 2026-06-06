@@ -38,8 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadUsers() async {
     try {
-      final users = await _firestoreService.getUsers()
-          .timeout(const Duration(seconds: 10));
+      final users = await _firestoreService.getUsers();
       if (mounted) setState(() { _users = users; _loading = false; });
     } catch (e) {
       debugPrint('사용자 로드 오류: $e');
@@ -91,97 +90,111 @@ class _HomeScreenState extends State<HomeScreen> {
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
 
-    showModalBottomSheet(
+    void showError(String msg) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: const Color(0xFFDC2626),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+
+    Future<void> doRegister(BuildContext dialogCtx) async {
+      final name = nameCtrl.text.trim();
+      if (name.isEmpty) {
+        showError('이름을 입력해주세요');
+        return;
+      }
+
+      try {
+        final latestUsers = await _firestoreService.getUsers();
+        final exists = latestUsers.any((u) => u.name == name);
+        if (exists) {
+          await _loadUsers(); // 목록 새로고침해서 화면에 표시
+          if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+          showError('"$name"은 이미 등록된 이름입니다');
+          return;
+        }
+
+        await _firestoreService.createUser(
+          name: name,
+          phone: phoneCtrl.text.trim(),
+          role: 'member',
+        );
+        await _loadUsers();
+        if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+      } catch (e) {
+        showError('등록 실패: $e');
+      }
+    }
+
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          left: 24, right: 24, top: 24,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('이름 등록',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            const Text('이름과 전화번호를 입력해주세요',
-                style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
-            const SizedBox(height: 20),
-            TextField(
-              controller: nameCtrl,
-              autofocus: true,
-              style: const TextStyle(fontSize: 18),
-              decoration: InputDecoration(
-                labelText: '이름',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('이름 등록',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('이름과 전화번호를 입력해주세요',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameCtrl,
+                autofocus: true,
+                textInputAction: TextInputAction.done,
+                style: const TextStyle(fontSize: 18),
+                onSubmitted: (_) => doRegister(ctx),
+                decoration: InputDecoration(
+                  labelText: '이름',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: phoneCtrl,
-              keyboardType: TextInputType.phone,
-              style: const TextStyle(fontSize: 18),
-              decoration: InputDecoration(
-                labelText: '전화번호 (선택)',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneCtrl,
+                keyboardType: TextInputType.phone,
+                textInputAction: TextInputAction.done,
+                style: const TextStyle(fontSize: 18),
+                onSubmitted: (_) => doRegister(ctx),
+                decoration: InputDecoration(
+                  labelText: '전화번호 (선택)',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () async {
-                final name = nameCtrl.text.trim();
-                if (name.isEmpty) return;
-
-                // Firestore에서 최신 목록으로 중복 확인
-                final latestUsers = await _firestoreService.getUsers();
-                final exists = latestUsers.any((u) => u.name == name);
-                if (exists) {
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(
-                        content: Text('"$name"은 이미 등록된 이름입니다'),
-                        backgroundColor: const Color(0xFFDC2626),
-                      ),
-                    );
-                  }
-                  return;
-                }
-
-                await _firestoreService.createUser(
-                  name: name,
-                  phone: phoneCtrl.text.trim(),
-                  role: 'member',
-                );
-                await _loadUsers();
-                if (ctx.mounted) Navigator.pop(ctx);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6366F1),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('등록',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white)),
-            ),
-          ],
+            ],
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소',
+                style: TextStyle(color: Color(0xFF6B7280), fontSize: 16)),
+          ),
+          ElevatedButton(
+            onPressed: () => doRegister(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: const Text('등록',
+                style: TextStyle(fontSize: 16, color: Colors.white)),
+          ),
+        ],
       ),
     );
   }

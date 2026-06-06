@@ -131,14 +131,14 @@ class FirestoreService {
     required String phone,
     required String role,
   }) async {
-    final ref = await _db.collection('users').add({
+    await _db.collection('users').doc(name).set({
       'name': name,
       'phone': phone,
       'role': role,
       'accounts': [],
       'fcmToken': '',
     });
-    return ref.id;
+    return name;
   }
 
   Future<void> updateUser(String userId, {
@@ -171,8 +171,14 @@ class FirestoreService {
     if (approverIds.isNotEmpty) data['approver1Id'] = approverIds[0];
     if (approverIds.length > 1) data['approver2Id'] = approverIds[1];
 
-    final ref = await _db.collection('expenses').add(data);
-    return ref.id;
+    // 읽기 쉬운 문서 ID: 이름_날짜_시간
+    final now = DateTime.now();
+    final d = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+    final t = '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+    final id = '${expense.userName}_${d}_$t';
+
+    await _db.collection('expenses').doc(id).set(data);
+    return id;
   }
 
   Future<ExpenseModel?> getExpense(String expenseId) async {

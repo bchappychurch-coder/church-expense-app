@@ -201,15 +201,18 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
+              Navigator.pop(context);
               setState(() => _saving = true);
-              await _firestoreService.deleteUser(user.id);
-              // 결재자로 지정돼 있으면 제거
-              if (_approverIds.contains(user.id)) {
-                _approverIds.remove(user.id);
-                await _firestoreService.updateApproverIds(_approverIds);
+              try {
+                await _firestoreService.deleteUser(user.id);
+                if (_approverIds.contains(user.id)) {
+                  _approverIds.remove(user.id);
+                  await _firestoreService.updateApproverIds(_approverIds);
+                }
+                await _load();
+              } finally {
+                if (mounted) setState(() => _saving = false);
               }
-              await _load();
-              if (mounted) Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFDC2626),
