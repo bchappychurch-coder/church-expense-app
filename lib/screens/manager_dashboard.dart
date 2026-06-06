@@ -242,68 +242,38 @@ class _ManagerDetail extends StatefulWidget {
 
 class _ManagerDetailState extends State<_ManagerDetail> {
   bool _processing = false;
+  bool _showRejectInput = false;
+  final _rejectController = TextEditingController();
+
+  @override
+  void dispose() {
+    _rejectController.dispose();
+    super.dispose();
+  }
 
   Future<void> _proxyApprove() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('대리 승인', style: TextStyle(fontSize: 18)),
-        content: Text(
-            '${widget.expense.userName}님의 지출을 담당자가 대리 승인하시겠습니까?',
-            style: const TextStyle(fontSize: 16)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF16A34A)),
-            child: const Text('대리 승인', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
     setState(() => _processing = true);
-    await widget.service.proxyApproveExpense(widget.expense.id!);
-    if (mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('대리 승인 처리되었습니다')),
-      );
+    try {
+      await widget.service.proxyApproveExpense(widget.expense.id!);
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('대리 승인 처리되었습니다')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _processing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('오류: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
-  Future<void> _proxyReject() async {
-    final controller = TextEditingController();
-    final reason = await showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('대리 반려', style: TextStyle(fontSize: 18)),
-        content: TextField(
-          controller: controller,
-          style: const TextStyle(fontSize: 16),
-          decoration: const InputDecoration(
-            hintText: '반려 사유를 입력해 주세요',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 3,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
-            child: const Text('대리 반려', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-    if (reason == null || reason.trim().isEmpty) return;
+  Future<void> _confirmProxyReject() async {
+    final reason = _rejectController.text.trim();
+    if (reason.isEmpty) return;
     setState(() => _processing = true);
     await widget.service.rejectExpense(widget.expense.id!, reason);
     if (mounted) {
@@ -412,12 +382,18 @@ class _ManagerDetailState extends State<_ManagerDetail> {
   @override
   Widget build(BuildContext context) {
     final e = widget.expense;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.85,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      builder: (_, scrollController) => SingleChildScrollView(
+        controller: scrollController,
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -522,35 +498,82 @@ class _ManagerDetailState extends State<_ManagerDetail> {
                   style: TextStyle(fontSize: 13, color: Color(0xFF92400E), fontWeight: FontWeight.w600)),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _proxyReject,
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFFDC2626)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('대리 반려',
-                        style: TextStyle(fontSize: 16, color: Color(0xFFDC2626), fontWeight: FontWeight.bold)),
+            if (_showRejectInput) ...[
+              TextField(
+                controller: _rejectController,
+                style: const TextStyle(fontSize: 16),
+                decoration: InputDecoration(
+                  hintText: '반려 사유를 입력해 주세요',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFDC2626), width: 2),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _proxyApprove,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF16A34A),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                maxLines: 2,
+                autofocus: true,
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => setState(() {
+                        _showRejectInput = false;
+                        _rejectController.clear();
+                      }),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('취소', style: TextStyle(fontSize: 16)),
                     ),
-                    child: const Text('대리 승인',
-                        style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _confirmProxyReject,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFDC2626),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('대리 반려 확인',
+                          style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ] else
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => setState(() => _showRejectInput = true),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFDC2626)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('대리 반려',
+                          style: TextStyle(fontSize: 16, color: Color(0xFFDC2626), fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _proxyApprove,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF16A34A),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('대리 승인',
+                          style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
             const SizedBox(height: 10),
           ],
 
@@ -595,7 +618,8 @@ class _ManagerDetailState extends State<_ManagerDetail> {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 }
 
