@@ -38,7 +38,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadUsers() async {
     try {
-      final users = await _firestoreService.getUsers();
+      final users = await _firestoreService.getUsers()
+          .timeout(const Duration(seconds: 10));
       if (mounted) setState(() { _users = users; _loading = false; });
     } catch (e) {
       debugPrint('사용자 로드 오류: $e');
@@ -185,13 +186,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _onUserSelected(UserModel user) async {
-    final token = await _notificationService.getToken();
-    if (token != null) {
-      _firestoreService.updateFcmToken(user.id, token); // await 제거 - 백그라운드로
-    }
-    if (!mounted) return;
+  void _onUserSelected(UserModel user) {
     context.read<AppProvider>().setUser(user);
+
+    // 백그라운드로 FCM 토큰 업데이트 (실패해도 무관)
+    _notificationService.getToken().then((token) {
+      if (token != null) {
+        _firestoreService.updateFcmToken(user.id, token);
+      }
+    }).catchError((_) {});
 
     // 모든 사용자 → 역할 선택 다이얼로그
     _showRoleDialog(user);

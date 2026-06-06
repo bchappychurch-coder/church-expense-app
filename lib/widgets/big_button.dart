@@ -27,39 +27,43 @@ class BigButton extends StatelessWidget {
         ? const Color(0xFF6366F1)
         : (borderColor ?? const Color(0xFFD1D5DB));
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: bg,
-          border: Border.all(color: border, width: selected ? 2.5 : 1.5),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: selected
-                    ? const Color(0xFF3730A3)
-                    : const Color(0xFF1F2937),
-              ),
-            ),
-            if (subLabel != null) ...[
-              const SizedBox(height: 2),
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            border: Border.all(color: border, width: selected ? 2.5 : 1.5),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
               Text(
-                subLabel!,
+                label,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: selected
+                      ? const Color(0xFF3730A3)
+                      : const Color(0xFF1F2937),
+                ),
               ),
+              if (subLabel != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  subLabel!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

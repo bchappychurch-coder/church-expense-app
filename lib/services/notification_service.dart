@@ -1,31 +1,30 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 class NotificationService {
-  final _messaging = FirebaseMessaging.instance;
-
   Future<String?> initialize() async {
+    if (kIsWeb) return null; // 웹에서는 FCM 사용 안 함
     try {
-      await _messaging.requestPermission(alert: true, badge: true, sound: true);
-      await FirebaseMessaging.instance
-          .setForegroundNotificationPresentationOptions(
-        alert: true, badge: true, sound: true,
-      );
+      final messaging = FirebaseMessaging.instance;
+      await messaging.requestPermission(alert: true, badge: true, sound: true);
       FirebaseMessaging.onBackgroundMessage(_backgroundMessageHandler);
-      FirebaseMessaging.onMessage.listen((message) {
-        debugPrint('포그라운드 알림: ${message.notification?.title}');
-      });
-      return await _messaging.getToken();
+      return await messaging.getToken();
     } catch (e) {
       debugPrint('FCM 초기화 실패: $e');
       return null;
     }
   }
 
-  Future<String?> getToken() => _messaging.getToken();
+  Future<String?> getToken() async {
+    if (kIsWeb) return null;
+    try {
+      return await FirebaseMessaging.instance.getToken();
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
-// 백그라운드 핸들러 (top-level 함수여야 함)
 @pragma('vm:entry-point')
 Future<void> _backgroundMessageHandler(RemoteMessage message) async {
   debugPrint('백그라운드 알림: ${message.notification?.title}');
