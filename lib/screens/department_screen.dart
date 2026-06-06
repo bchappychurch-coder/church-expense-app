@@ -27,6 +27,11 @@ class DepartmentScreen extends StatelessWidget {
         elevation: 0,
         actions: [
           IconButton(
+            icon: const Icon(Icons.home, color: Colors.white),
+            tooltip: '홈',
+            onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
+          ),
+          IconButton(
             icon: const Icon(Icons.settings, color: Colors.white),
             tooltip: '계좌 관리',
             onPressed: () => Navigator.push(

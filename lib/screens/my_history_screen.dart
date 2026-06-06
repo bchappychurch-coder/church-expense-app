@@ -6,8 +6,85 @@ import '../services/firestore_service.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/receipt_image_viewer.dart';
 
-class MyHistoryScreen extends StatelessWidget {
+class MyHistoryScreen extends StatefulWidget {
   const MyHistoryScreen({super.key});
+
+  @override
+  State<MyHistoryScreen> createState() => _MyHistoryScreenState();
+}
+
+class _MyHistoryScreenState extends State<MyHistoryScreen> {
+  // 0=1주, 1=1개월, 2=3개월, 3=직접입력
+  int _selectedPeriod = 0;
+  DateTime? _customFrom;
+  DateTime? _customTo;
+
+  DateTime get _fromDate {
+    if (_selectedPeriod == 3 && _customFrom != null) return _customFrom!;
+    final now = DateTime.now();
+    switch (_selectedPeriod) {
+      case 1:
+        return now.subtract(const Duration(days: 30));
+      case 2:
+        return now.subtract(const Duration(days: 90));
+      default:
+        return now.subtract(const Duration(days: 7));
+    }
+  }
+
+  DateTime get _toDate {
+    if (_selectedPeriod == 3 && _customTo != null) return _customTo!;
+    return DateTime.now();
+  }
+
+  String get _periodLabel {
+    if (_selectedPeriod == 3 && _customFrom != null && _customTo != null) {
+      return '${_customFrom!.month}/${_customFrom!.day} ~ ${_customTo!.month}/${_customTo!.day}';
+    }
+    return ['최근 1주', '최근 1개월', '최근 3개월', '직접입력'][_selectedPeriod];
+  }
+
+  Future<void> _pickCustomRange() async {
+    final now = DateTime.now();
+    final from = await showDatePicker(
+      context: context,
+      initialDate: _customFrom ?? now.subtract(const Duration(days: 7)),
+      firstDate: DateTime(2020),
+      lastDate: now,
+      helpText: '시작일 선택',
+    );
+    if (from == null || !mounted) return;
+    final to = await showDatePicker(
+      context: context,
+      initialDate: _customTo ?? now,
+      firstDate: from,
+      lastDate: now,
+      helpText: '종료일 선택',
+    );
+    if (to == null || !mounted) return;
+    setState(() {
+      _customFrom = from;
+      _customTo = to;
+      _selectedPeriod = 3;
+    });
+  }
+
+  List<ExpenseModel> _filterByPeriod(List<ExpenseModel> all) {
+    final from = _fromDate;
+    final to = _toDate.add(const Duration(days: 1));
+    return all.where((e) {
+      final dt = e.createdAt.toDate();
+      return dt.isAfter(from) && dt.isBefore(to);
+    }).toList();
+  }
+
+  String _formatAmount(int amount) {
+    final formatted = amount.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]},',
+    );
+    return '$formatted원';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +99,13 @@ class MyHistoryScreen extends StatelessWidget {
             style: TextStyle(color: Colors.white, fontSize: 20)),
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.home, color: Colors.white),
+            tooltip: '홈',
+            onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
+          ),
+        ],
       ),
       body: StreamBuilder<List<ExpenseModel>>(
         stream: service.getMyExpenses(user.id),
@@ -36,21 +120,118 @@ class MyHistoryScreen extends StatelessWidget {
                   style: TextStyle(fontSize: 16, color: Color(0xFF9CA3AF))),
             );
           }
-          final expenses = snapshot.data ?? [];
-          if (expenses.isEmpty) {
-            return const Center(
-              child: Text('신청 내역이 없습니다',
-                  style: TextStyle(fontSize: 18, color: Color(0xFF9CA3AF))),
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: expenses.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, i) =>
-                _ExpenseCard(expense: expenses[i]),
+
+          final all = snapshot.data ?? [];
+          final expenses = _filterByPeriod(all);
+          final total = expenses.fold<int>(0, (sum, e) => sum + e.amount);
+
+          return Column(
+            children: [
+              // 기간 선택 칩
+              Container(
+                color: const Color(0xFFF9FAFB),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Row(
+                  children: [
+                    _PeriodChip(label: '1주', selected: _selectedPeriod == 0,
+                        onTap: () => setState(() => _selectedPeriod = 0)),
+                    const SizedBox(width: 8),
+                    _PeriodChip(label: '1개월', selected: _selectedPeriod == 1,
+                        onTap: () => setState(() => _selectedPeriod = 1)),
+                    const SizedBox(width: 8),
+                    _PeriodChip(label: '3개월', selected: _selectedPeriod == 2,
+                        onTap: () => setState(() => _selectedPeriod = 2)),
+                    const SizedBox(width: 8),
+                    _PeriodChip(
+                      label: _selectedPeriod == 3 ? _periodLabel : '직접입력',
+                      selected: _selectedPeriod == 3,
+                      onTap: _pickCustomRange,
+                      icon: Icons.calendar_today,
+                    ),
+                  ],
+                ),
+              ),
+              // 합산 배너
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                color: const Color(0xFFEEF2FF),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('$_periodLabel · ${expenses.length}건',
+                        style: const TextStyle(
+                            fontSize: 14, color: Color(0xFF6366F1))),
+                    Text(_formatAmount(total),
+                        style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF4338CA))),
+                  ],
+                ),
+              ),
+              // 목록
+              Expanded(
+                child: expenses.isEmpty
+                    ? const Center(
+                        child: Text('해당 기간에 신청 내역이 없습니다',
+                            style: TextStyle(fontSize: 16, color: Color(0xFF9CA3AF))),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: expenses.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, i) => _ExpenseCard(expense: expenses[i]),
+                      ),
+              ),
+            ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _PeriodChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final IconData? icon;
+
+  const _PeriodChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF6366F1) : Colors.white,
+          border: Border.all(
+              color: selected ? const Color(0xFF6366F1) : const Color(0xFFD1D5DB)),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 13,
+                  color: selected ? Colors.white : const Color(0xFF6B7280)),
+              const SizedBox(width: 4),
+            ],
+            Text(label,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: selected ? Colors.white : const Color(0xFF6B7280))),
+          ],
+        ),
       ),
     );
   }
@@ -137,16 +318,25 @@ class _ExpenseDetail extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
+              IconButton(
+                icon: const Icon(Icons.close, color: Color(0xFF9CA3AF)),
+                onPressed: () => Navigator.pop(context),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

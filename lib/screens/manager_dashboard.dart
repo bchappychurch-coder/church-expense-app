@@ -37,6 +37,11 @@ class ManagerDashboard extends StatelessWidget {
         elevation: 0,
         actions: [
           IconButton(
+            icon: const Icon(Icons.home, color: Colors.white),
+            tooltip: '홈',
+            onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
+          ),
+          IconButton(
             icon: const Icon(Icons.settings, color: Colors.white),
             tooltip: '부서 설정',
             onPressed: () => _showDepartmentSettings(context),
@@ -238,6 +243,77 @@ class _ManagerDetail extends StatefulWidget {
 class _ManagerDetailState extends State<_ManagerDetail> {
   bool _processing = false;
 
+  Future<void> _proxyApprove() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('대리 승인', style: TextStyle(fontSize: 18)),
+        content: Text(
+            '${widget.expense.userName}님의 지출을 담당자가 대리 승인하시겠습니까?',
+            style: const TextStyle(fontSize: 16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF16A34A)),
+            child: const Text('대리 승인', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _processing = true);
+    await widget.service.proxyApproveExpense(widget.expense.id!);
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('대리 승인 처리되었습니다')),
+      );
+    }
+  }
+
+  Future<void> _proxyReject() async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('대리 반려', style: TextStyle(fontSize: 18)),
+        content: TextField(
+          controller: controller,
+          style: const TextStyle(fontSize: 16),
+          decoration: const InputDecoration(
+            hintText: '반려 사유를 입력해 주세요',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+            child: const Text('대리 반려', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (reason == null || reason.trim().isEmpty) return;
+    setState(() => _processing = true);
+    await widget.service.rejectExpense(widget.expense.id!, reason);
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('대리 반려 처리되었습니다')),
+      );
+    }
+  }
+
   Future<void> _editAmount() async {
     final controller = TextEditingController(
         text: widget.expense.amount.toString());
@@ -342,15 +418,24 @@ class _ManagerDetailState extends State<_ManagerDetail> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2)),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: Color(0xFF9CA3AF)),
+                onPressed: () => Navigator.pop(context),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -422,6 +507,52 @@ class _ManagerDetailState extends State<_ManagerDetail> {
             ReceiptImageViewer(imageUrl: e.receiptImageUrl),
           ],
           const SizedBox(height: 20),
+
+          // 대리결재 버튼 (pending, approved1 상태일 때)
+          if ((e.status == 'pending' || e.status == 'approved1') && !_processing) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF9C3),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('담당자 대리결재',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Color(0xFF92400E), fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _proxyReject,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFDC2626)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('대리 반려',
+                        style: TextStyle(fontSize: 16, color: Color(0xFFDC2626), fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _proxyApprove,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF16A34A),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('대리 승인',
+                        style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
 
           // 송금완료 버튼 (approved 상태일 때만)
           if (e.status == 'approved' && !_processing)

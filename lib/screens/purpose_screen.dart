@@ -153,6 +153,13 @@ class _PurposeScreenState extends State<PurposeScreen> {
             style: TextStyle(color: Colors.white, fontSize: 20)),
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.home, color: Colors.white),
+            tooltip: '홈',
+            onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),

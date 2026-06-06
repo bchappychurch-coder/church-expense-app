@@ -199,10 +199,25 @@ class FirestoreService {
     return _db
         .collection('expenses')
         .where('status', whereIn: ['pending', 'approved1'])
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) =>
-            snap.docs.map((doc) => ExpenseModel.fromFirestore(doc)).toList());
+        .map((snap) {
+          final list = snap.docs.map((doc) => ExpenseModel.fromFirestore(doc)).toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
+  }
+
+  // 승인자용: 전체 기간 합산용 (상태 필터로 권한 우회)
+  Stream<List<ExpenseModel>> getAllExpensesForApprover() {
+    return _db
+        .collection('expenses')
+        .where('status', whereIn: ['pending', 'approved1', 'approved', 'completed', 'rejected'])
+        .snapshots()
+        .map((snap) {
+          final list = snap.docs.map((doc) => ExpenseModel.fromFirestore(doc)).toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   // 담당자용: 전체
@@ -242,6 +257,16 @@ class FirestoreService {
 
     await _db.collection('expenses').doc(expenseId).update(updates);
     return otherAlreadyApproved; // true면 담당자에게 알림 필요
+  }
+
+  // 담당자 대리결재
+  Future<void> proxyApproveExpense(String expenseId) async {
+    await _db.collection('expenses').doc(expenseId).update({
+      'approver1ApprovedAt': Timestamp.now(),
+      'approver2ApprovedAt': Timestamp.now(),
+      'status': 'approved',
+      'proxyApprovedAt': Timestamp.now(),
+    });
   }
 
   Future<void> rejectExpense(String expenseId, String reason) async {
