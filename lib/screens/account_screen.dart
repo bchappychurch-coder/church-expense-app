@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../models/bank_account.dart';
 import '../providers/app_provider.dart';
@@ -8,11 +9,13 @@ import 'purpose_screen.dart';
 class AccountScreen extends StatefulWidget {
   final String receiptImagePath;
   final int amount;
+  final XFile? xFile;
 
   const AccountScreen({
     super.key,
     required this.receiptImagePath,
     required this.amount,
+    this.xFile,
   });
 
   @override
@@ -90,6 +93,7 @@ class _AccountScreenState extends State<AccountScreen> {
           amount: widget.amount,
           bankName: bankName,
           accountNumber: accountNumber,
+          xFile: widget.xFile,
         ),
       ),
     );

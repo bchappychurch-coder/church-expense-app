@@ -5,6 +5,7 @@ import '../models/expense_model.dart';
 import '../providers/app_provider.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
+import 'package:image_picker/image_picker.dart';
 import '../widgets/big_button.dart';
 
 class PurposeScreen extends StatefulWidget {
@@ -12,6 +13,7 @@ class PurposeScreen extends StatefulWidget {
   final int amount;
   final String bankName;
   final String accountNumber;
+  final XFile? xFile;
 
   const PurposeScreen({
     super.key,
@@ -19,6 +21,7 @@ class PurposeScreen extends StatefulWidget {
     required this.amount,
     required this.bankName,
     required this.accountNumber,
+    this.xFile,
   });
 
   @override
@@ -67,7 +70,8 @@ class _PurposeScreenState extends State<PurposeScreen> {
       final imageUrl = await _storageService.uploadReceipt(
           widget.receiptImagePath, user.id,
           userName: user.name,
-          purpose: _selectedPurpose ?? '');
+          purpose: _selectedPurpose ?? '',
+          xFile: widget.xFile);
 
       // 2. Firestore에 지출 저장
       await _firestoreService.createExpense(ExpenseModel(

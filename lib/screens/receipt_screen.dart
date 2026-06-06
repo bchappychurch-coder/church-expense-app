@@ -1,9 +1,7 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../providers/app_provider.dart';
 import 'account_screen.dart';
 
 class ReceiptScreen extends StatefulWidget {
@@ -15,7 +13,8 @@ class ReceiptScreen extends StatefulWidget {
 }
 
 class _ReceiptScreenState extends State<ReceiptScreen> {
-  File? _receiptImage;
+  XFile? _receiptImage;
+  Uint8List? _imageBytes;
   final _amountController = TextEditingController();
   bool _processing = false;
 
@@ -23,7 +22,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   void initState() {
     super.initState();
     if (widget.initialImagePath != null && widget.initialImagePath!.isNotEmpty) {
-      _receiptImage = File(widget.initialImagePath!);
+      _receiptImage = XFile(widget.initialImagePath!);
       _processing = true;
       _runOcr(widget.initialImagePath!);
     }
@@ -35,32 +34,6 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     super.dispose();
   }
 
-  Future<void> _takePhoto() async {
-    // 카메라 실행 전 상태 저장 (앱 재시작 대비)
-    final user = context.read<AppProvider>().currentUser;
-    final dept = context.read<AppProvider>().selectedDepartment;
-    if (user != null && dept != null) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('pending_user_id', user.id);
-      await prefs.setString('pending_department', dept);
-    }
-
-    final picker = ImagePicker();
-    final XFile? picked = await picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 85,
-    );
-    if (picked == null) return;
-
-    // 카메라 성공 시 저장된 임시 상태 삭제
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('pending_user_id');
-    await prefs.remove('pending_department');
-
-    setState(() { _receiptImage = File(picked.path); _processing = true; });
-    await _runOcr(picked.path);
-  }
-
   Future<void> _pickFromGallery() async {
     final picker = ImagePicker();
     final XFile? picked = await picker.pickImage(
@@ -68,7 +41,12 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       imageQuality: 85,
     );
     if (picked == null) return;
-    setState(() { _receiptImage = File(picked.path); _processing = true; });
+    final bytes = kIsWeb ? await picked.readAsBytes() : null;
+    setState(() {
+      _receiptImage = picked;
+      _imageBytes = bytes;
+      _processing = true;
+    });
     await _runOcr(picked.path);
   }
 
@@ -122,7 +100,9 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: Image.file(_receiptImage!, fit: BoxFit.contain, width: double.infinity),
+                child: kIsWeb && _imageBytes != null
+                    ? Image.memory(_imageBytes!, fit: BoxFit.contain, width: double.infinity)
+                    : Image.file(File(_receiptImage!.path), fit: BoxFit.contain, width: double.infinity),
               )
             else
               Container(
@@ -262,6 +242,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                             builder: (_) => AccountScreen(
                               receiptImagePath: _receiptImage?.path ?? '',
                               amount: amount,
+                              xFile: _receiptImage,
                             ),
                           ),
                         );

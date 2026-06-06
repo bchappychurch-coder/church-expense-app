@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 class ReceiptImageViewer extends StatelessWidget {
   final String imageUrl;
@@ -13,17 +12,19 @@ class ReceiptImageViewer extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: CachedNetworkImage(
-              imageUrl: imageUrl,
+            child: Image.network(
+              imageUrl,
               height: 180,
               width: double.infinity,
               fit: BoxFit.cover,
-              placeholder: (_, __) => Container(
-                height: 180,
-                color: Colors.grey.shade200,
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-              errorWidget: (_, __, ___) => Container(
+              loadingBuilder: (_, child, progress) => progress == null
+                  ? child
+                  : Container(
+                      height: 180,
+                      color: Colors.grey.shade200,
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+              errorBuilder: (_, __, ___) => Container(
                 height: 180,
                 color: Colors.grey.shade200,
                 child: const Center(
@@ -70,11 +71,12 @@ class ReceiptImageViewer extends StatelessWidget {
           ),
           body: Center(
             child: InteractiveViewer(
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
+              child: Image.network(
+                imageUrl,
                 fit: BoxFit.contain,
-                placeholder: (_, __) =>
-                    const CircularProgressIndicator(color: Colors.white),
+                loadingBuilder: (_, child, progress) => progress == null
+                    ? child
+                    : const CircularProgressIndicator(color: Colors.white),
               ),
             ),
           ),
