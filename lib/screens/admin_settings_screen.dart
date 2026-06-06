@@ -57,6 +57,18 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   Future<void> _saveApprovers() async {
     setState(() => _saving = true);
     await _firestoreService.updateApproverIds(_approverIds);
+    // approverIds 변경 시 user.role도 동기화
+    for (final user in _allUsers) {
+      final shouldBeApprover = _approverIds.contains(user.id);
+      if (shouldBeApprover && user.role == 'member') {
+        await _firestoreService.updateUser(user.id,
+            name: user.name, phone: user.phone, role: 'approver');
+      } else if (!shouldBeApprover && user.role == 'approver') {
+        await _firestoreService.updateUser(user.id,
+            name: user.name, phone: user.phone, role: 'member');
+      }
+    }
+    await _load();
     if (mounted) setState(() => _saving = false);
   }
 
