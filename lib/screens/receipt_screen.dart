@@ -12,15 +12,23 @@ class ReceiptScreen extends StatefulWidget {
   State<ReceiptScreen> createState() => _ReceiptScreenState();
 }
 
-class _ReceiptScreenState extends State<ReceiptScreen> {
+class _ReceiptScreenState extends State<ReceiptScreen>
+    with SingleTickerProviderStateMixin {
   XFile? _receiptImage;
   Uint8List? _imageBytes;
   final _amountController = TextEditingController();
   bool _processing = false;
+  late AnimationController _blinkController;
+  late Animation<double> _blinkAnimation;
 
   @override
   void initState() {
     super.initState();
+    _blinkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..repeat(reverse: true);
+    _blinkAnimation = Tween<double>(begin: 0.4, end: 1.0).animate(_blinkController);
     if (widget.initialImagePath != null && widget.initialImagePath!.isNotEmpty) {
       _receiptImage = XFile(widget.initialImagePath!);
       _processing = true;
@@ -30,6 +38,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
 
   @override
   void dispose() {
+    _blinkController.dispose();
     _amountController.dispose();
     super.dispose();
   }
@@ -139,7 +148,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '카메라 앱으로 먼저 사진 찍은 후\n아래 버튼으로 사진을 선택해 주세요',
+                      '영수증 사진을 갤러리에서 선택해 주세요',
                       style: TextStyle(fontSize: 14, color: Color(0xFF92400E)),
                     ),
                   ),
@@ -148,20 +157,23 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
             ),
             const SizedBox(height: 12),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _pickFromGallery,
-                icon: const Icon(Icons.photo_library, color: Colors.white),
-                label: Text(
-                  _receiptImage == null ? '영수증 사진 선택' : '사진 다시 선택',
-                  style: const TextStyle(fontSize: 17, color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+            FadeTransition(
+              opacity: _receiptImage == null ? _blinkAnimation : const AlwaysStoppedAnimation(1.0),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _pickFromGallery,
+                  icon: const Icon(Icons.photo_library, color: Colors.white, size: 26),
+                  label: const Text(
+                    '사진만 선택 (갤러리)',
+                    style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
               ),
             ),
