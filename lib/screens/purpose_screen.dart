@@ -65,7 +65,9 @@ class _PurposeScreenState extends State<PurposeScreen> {
 
       // 1. 영수증 사진 업로드
       final imageUrl = await _storageService.uploadReceipt(
-          widget.receiptImagePath, user.id);
+          widget.receiptImagePath, user.id,
+          userName: user.name,
+          purpose: _selectedPurpose ?? '');
 
       // 2. Firestore에 지출 저장
       await _firestoreService.createExpense(ExpenseModel(
