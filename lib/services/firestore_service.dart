@@ -120,6 +120,14 @@ class FirestoreService {
     await _db.collection('users').doc(userId).update({'fcmToken': token});
   }
 
+  Future<void> updateUserPin(String userId, String? pin) async {
+    if (pin == null) {
+      await _db.collection('users').doc(userId).update({'pin': FieldValue.delete()});
+    } else {
+      await _db.collection('users').doc(userId).update({'pin': pin});
+    }
+  }
+
   Future<void> saveUserAccounts(String userId, List accounts) async {
     await _db.collection('users').doc(userId).update({
       'accounts': accounts.map((a) => a.toMap()).toList(),

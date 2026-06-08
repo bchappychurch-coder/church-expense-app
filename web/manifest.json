@@ -1,6 +1,6 @@
 {
-    "name": "church_expense_app",
-    "short_name": "church_expense_app",
+    "name": "행복한교회 지출청구앱",
+    "short_name": "지출청구앱",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

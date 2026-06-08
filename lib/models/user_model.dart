@@ -8,6 +8,7 @@ class UserModel {
   final List<BankAccount> accounts;
   final String role; // 'member' | 'approver' | 'manager'
   String fcmToken;
+  final String? pin; // 개인 비밀번호 (null이면 미설정)
 
   UserModel({
     required this.id,
@@ -16,6 +17,7 @@ class UserModel {
     this.accounts = const [],
     required this.role,
     this.fcmToken = '',
+    this.pin,
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -44,6 +46,7 @@ class UserModel {
       accounts: accounts,
       role: data['role'] ?? 'member',
       fcmToken: data['fcmToken'] ?? '',
+      pin: data['pin'] as String?,
     );
   }
 
@@ -53,15 +56,17 @@ class UserModel {
         'accounts': accounts.map((a) => a.toMap()).toList(),
         'role': role,
         'fcmToken': fcmToken,
+        if (pin != null) 'pin': pin,
       };
 
-  UserModel copyWith({List<BankAccount>? accounts}) => UserModel(
+  UserModel copyWith({List<BankAccount>? accounts, String? pin}) => UserModel(
         id: id,
         name: name,
         phone: phone,
         accounts: accounts ?? this.accounts,
         role: role,
         fcmToken: fcmToken,
+        pin: pin ?? this.pin,
       );
 
   bool get isApprover => role == 'approver';
