@@ -6,7 +6,6 @@ import '../providers/app_provider.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 import 'package:image_picker/image_picker.dart';
-import '../widgets/big_button.dart';
 
 class PurposeScreen extends StatefulWidget {
   final String receiptImagePath;
@@ -33,18 +32,11 @@ class _PurposeScreenState extends State<PurposeScreen> {
   final _storageService = StorageService();
   final _descController = TextEditingController();
 
-  String? _selectedPurpose;
   bool _submitting = false;
-  List<String> _purposes = [];
-  bool _loadingPurposes = true;
 
   @override
   void initState() {
     super.initState();
-    _firestoreService.getPurposes().then((list) {
-      list.sort();
-      if (mounted) setState(() { _purposes = list; _loadingPurposes = false; });
-    });
   }
 
   @override
@@ -54,7 +46,6 @@ class _PurposeScreenState extends State<PurposeScreen> {
   }
 
   bool get _canSubmit =>
-      _selectedPurpose != null &&
       _descController.text.trim().isNotEmpty &&
       !_submitting;
 
@@ -70,7 +61,7 @@ class _PurposeScreenState extends State<PurposeScreen> {
       final imageUrl = await _storageService.uploadReceipt(
           widget.receiptImagePath, user.id,
           userName: user.name,
-          purpose: _selectedPurpose ?? '',
+          purpose: '',
           xFile: widget.xFile);
 
       // 2. Firestore에 지출 저장
@@ -78,7 +69,7 @@ class _PurposeScreenState extends State<PurposeScreen> {
         userId: user.id,
         userName: user.name,
         department: department,
-        purpose: _selectedPurpose!,
+        purpose: _descController.text.trim(),
         description: _descController.text.trim(),
         amount: widget.amount,
         receiptImageUrl: imageUrl,
@@ -155,7 +146,7 @@ class _PurposeScreenState extends State<PurposeScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: const Color(0xFF6366F1),
-        title: const Text('용도 선택',
+        title: const Text('사용 내역',
             style: TextStyle(color: Colors.white, fontSize: 20)),
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
@@ -176,61 +167,21 @@ class _PurposeScreenState extends State<PurposeScreen> {
             _StepBar(current: 4),
             const SizedBox(height: 28),
 
-            const Text('사용 용도를 선택해 주세요',
+            const Text('사용 내역을 적어주세요',
                 style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1F2937))),
             const SizedBox(height: 20),
 
-            // 용도 버튼 그리드
-            if (_loadingPurposes)
-              const Center(child: CircularProgressIndicator())
-            else
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 3,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 1.8,
-                children: _purposes.map((p) {
-                  return BigButton(
-                    label: p,
-                    selected: _selectedPurpose == p,
-                    color: const Color(0xFFEDE9FE),
-                    borderColor: const Color(0xFFA78BFA),
-                    onTap: () => setState(() => _selectedPurpose = p),
-                  );
-                }).toList(),
-              ),
-
-            const SizedBox(height: 24),
-
-            // 상세 내용 입력 (필수)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: const [
-                    Text('상세 내용',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF374151))),
-                    SizedBox(width: 6),
-                    Text('(필수)',
-                        style: TextStyle(fontSize: 14, color: Color(0xFFDC2626))),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                TextField(
+            TextField(
                   controller: _descController,
-                  style: const TextStyle(fontSize: 18),
+                  style: const TextStyle(fontSize: 22),
+                  maxLines: 3,
                   decoration: InputDecoration(
                     hintText: '예) 12/20 중식비, 전도지 인쇄비 3매',
                     hintStyle: const TextStyle(
-                        fontSize: 16, color: Color(0xFF9CA3AF)),
+                        fontSize: 18, color: Color(0xFF9CA3AF)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
@@ -245,8 +196,6 @@ class _PurposeScreenState extends State<PurposeScreen> {
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
-              ],
-            ),
 
             const SizedBox(height: 24),
 
@@ -274,8 +223,6 @@ class _PurposeScreenState extends State<PurposeScreen> {
                       (widget.accountNumber.isNotEmpty
                           ? '  ${widget.accountNumber}'
                           : '')),
-                  if (_selectedPurpose != null)
-                    _SummaryRow('용도', _selectedPurpose!),
                   if (_descController.text.trim().isNotEmpty)
                     _SummaryRow('내용', _descController.text.trim()),
                 ],
@@ -307,12 +254,11 @@ class _PurposeScreenState extends State<PurposeScreen> {
               ),
             ),
 
-            if (!_canSubmit && _selectedPurpose != null &&
-                _descController.text.trim().isEmpty)
+            if (!_canSubmit && _descController.text.trim().isEmpty)
               const Padding(
                 padding: EdgeInsets.only(top: 10),
                 child: Text(
-                  '상세 내용을 입력해 주세요',
+                  '사용 내역을 입력해 주세요',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 15, color: Color(0xFFDC2626)),
                 ),
