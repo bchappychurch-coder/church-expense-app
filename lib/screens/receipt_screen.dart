@@ -63,6 +63,85 @@ class _ReceiptScreenState extends State<ReceiptScreen>
     if (mounted) setState(() => _processing = false);
   }
 
+  void _showImageOptions() {
+    final imageWidget = kIsWeb && _imageBytes != null
+        ? Image.memory(_imageBytes!, fit: BoxFit.contain)
+        : Image.file(File(_receiptImage!.path), fit: BoxFit.contain);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            // 확대 가능한 이미지
+            SizedBox(
+              width: double.infinity,
+              height: double.infinity,
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 5.0,
+                child: Center(child: imageWidget),
+              ),
+            ),
+            // 닫기 버튼
+            Positioned(
+              top: 40,
+              right: 16,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ),
+            // 하단 버튼
+            Positioned(
+              bottom: 40,
+              left: 24,
+              right: 24,
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.photo_library, color: Colors.white),
+                      label: const Text('사진 교체',
+                          style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6366F1),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _pickFromGallery();
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.check_circle, color: Colors.white),
+                      label: const Text('이 사진 쓸래요',
+                          style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   bool get _canProceed =>
       !_processing &&
       _amountController.text.trim().isNotEmpty &&
@@ -103,15 +182,42 @@ class _ReceiptScreenState extends State<ReceiptScreen>
 
             // 영수증 미리보기
             if (_receiptImage != null)
-              Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
+              GestureDetector(
+                onTap: _showImageOptions,
+                child: Stack(
+                  children: [
+                    Container(
+                      height: 220,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFF6366F1), width: 2),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: kIsWeb && _imageBytes != null
+                          ? Image.memory(_imageBytes!, fit: BoxFit.contain, width: double.infinity)
+                          : Image.file(File(_receiptImage!.path), fit: BoxFit.contain, width: double.infinity),
+                    ),
+                    Positioned(
+                      bottom: 10,
+                      right: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.zoom_in, color: Colors.white, size: 18),
+                            SizedBox(width: 4),
+                            Text('눌러서 확대', style: TextStyle(color: Colors.white, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                clipBehavior: Clip.antiAlias,
-                child: kIsWeb && _imageBytes != null
-                    ? Image.memory(_imageBytes!, fit: BoxFit.contain, width: double.infinity)
-                    : Image.file(File(_receiptImage!.path), fit: BoxFit.contain, width: double.infinity),
               )
             else
               Container(
