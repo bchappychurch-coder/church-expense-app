@@ -109,6 +109,52 @@ class ManagerDashboard extends StatelessWidget {
                   ),
                 ),
 
+              // 비밀번호 리셋 요청 배너
+              StreamBuilder<List<Map<String, dynamic>>>(
+                stream: service.streamPinResetRequests(),
+                builder: (context, snap) {
+                  final requests = snap.data ?? [];
+                  if (requests.isEmpty) return const SizedBox.shrink();
+                  return Container(
+                    width: double.infinity,
+                    color: const Color(0xFFFEF3C7),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('🔑 비밀번호 리셋 요청',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF92400E))),
+                        const SizedBox(height: 6),
+                        ...requests.map((r) => Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('${r['userName']}님',
+                                style: const TextStyle(fontSize: 15, color: Color(0xFF78350F))),
+                            TextButton(
+                              onPressed: () async {
+                                await service.clearPinReset(r['id'] as String);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('${r['userName']}님 비밀번호가 초기화됐습니다'),
+                                        backgroundColor: const Color(0xFF10B981)),
+                                  );
+                                }
+                              },
+                              style: TextButton.styleFrom(
+                                backgroundColor: const Color(0xFF6366F1),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              child: const Text('리셋', style: TextStyle(color: Colors.white, fontSize: 14)),
+                            ),
+                          ],
+                        )),
+                      ],
+                    ),
+                  );
+                },
+              ),
+
               // 전체 목록
               Expanded(
                 child: ListView.separated(

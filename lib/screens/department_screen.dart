@@ -69,13 +69,14 @@ class DepartmentScreen extends StatelessWidget {
                   final others = raw.where((d) => d != '전교인').toList()..sort();
                   final departments = [...raw.where((d) => d == '전교인'), ...others];
                   return GridView.count(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 1.8,
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                    childAspectRatio: 1.4,
                     children: departments.map((dept) {
                       return BigButton(
                         label: dept,
+                        fontSize: 20,
                         color: const Color(0xFFF0FDF4),
                         borderColor: const Color(0xFF86EFAC),
                         onTap: () async {

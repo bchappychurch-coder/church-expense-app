@@ -340,6 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showPinVerifyDialog(UserModel user) {
     final pinCtrl = TextEditingController();
+    int failCount = 0;
 
     void verify(BuildContext ctx, StateSetter setDlg) {
       if (pinCtrl.text.trim() == user.pin) {
@@ -347,14 +348,59 @@ class _HomeScreenState extends State<HomeScreen> {
         _showRoleDialog(user);
       } else {
         pinCtrl.clear();
+        failCount++;
         setDlg(() {});
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('비밀번호가 틀렸습니다'),
-            backgroundColor: Color(0xFFDC2626),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        if (failCount >= 5) {
+          Navigator.pop(ctx);
+          showDialog(
+            context: context,
+            builder: (ctx2) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('비밀번호 5회 오류',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              content: const Text(
+                '관리자에게 비밀번호 리셋을\n요청할까요?',
+                style: TextStyle(fontSize: 17, height: 1.6),
+                textAlign: TextAlign.center,
+              ),
+              actionsAlignment: MainAxisAlignment.center,
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx2),
+                  child: const Text('취소', style: TextStyle(color: Color(0xFF6B7280), fontSize: 16)),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    await _firestoreService.requestPinReset(user.id, user.name);
+                    if (ctx2.mounted) Navigator.pop(ctx2);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('관리자에게 리셋 요청을 보냈습니다'),
+                          backgroundColor: Color(0xFF10B981),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  child: const Text('요청하기', style: TextStyle(fontSize: 16, color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('비밀번호가 틀렸습니다 ($failCount/5회)'),
+              backgroundColor: const Color(0xFFDC2626),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
       }
     }
 

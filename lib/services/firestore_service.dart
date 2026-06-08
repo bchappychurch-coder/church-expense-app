@@ -128,6 +128,24 @@ class FirestoreService {
     }
   }
 
+  Future<void> requestPinReset(String userId, String userName) async {
+    await _db.collection('pinResetRequests').doc(userId).set({
+      'userId': userId,
+      'userName': userName,
+      'requestedAt': Timestamp.now(),
+    });
+  }
+
+  Stream<List<Map<String, dynamic>>> streamPinResetRequests() {
+    return _db.collection('pinResetRequests').snapshots().map((snap) =>
+        snap.docs.map((d) => {'id': d.id, ...d.data()}).toList());
+  }
+
+  Future<void> clearPinReset(String userId) async {
+    await _db.collection('pinResetRequests').doc(userId).delete();
+    await updateUserPin(userId, null);
+  }
+
   Future<void> saveUserAccounts(String userId, List accounts) async {
     await _db.collection('users').doc(userId).update({
       'accounts': accounts.map((a) => a.toMap()).toList(),
