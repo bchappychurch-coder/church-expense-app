@@ -96,42 +96,39 @@ class _ReceiptScreenState extends State<ReceiptScreen>
             ),
             // 하단 버튼
             Positioned(
-              bottom: 40,
-              left: 24,
-              right: 24,
-              child: Column(
+              bottom: 32,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.photo_library, color: Colors.white),
-                      label: const Text('사진 교체',
-                          style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6366F1),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _pickFromGallery();
-                      },
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.photo_library, color: Colors.white, size: 16),
+                    label: const Text('사진 교체',
+                        style: TextStyle(fontSize: 14, color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _pickFromGallery();
+                    },
                   ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.check_circle, color: Colors.white),
-                      label: const Text('이 사진 쓸래요',
-                          style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF10B981),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onPressed: () => Navigator.pop(ctx),
+                  const SizedBox(width: 16),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.check_circle, color: Colors.white, size: 16),
+                    label: const Text('이 사진 쓸래요',
+                        style: TextStyle(fontSize: 14, color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
+                    onPressed: () => Navigator.pop(ctx),
                   ),
                 ],
               ),
