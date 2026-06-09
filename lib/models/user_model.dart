@@ -9,6 +9,7 @@ class UserModel {
   final String role; // 'member' | 'approver' | 'manager'
   String fcmToken;
   final String? pin; // 개인 비밀번호 (null이면 미설정)
+  final bool pinRequired; // 관리자 초기화 후 재설정 요구
 
   UserModel({
     required this.id,
@@ -18,6 +19,7 @@ class UserModel {
     required this.role,
     this.fcmToken = '',
     this.pin,
+    this.pinRequired = false,
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -47,6 +49,7 @@ class UserModel {
       role: data['role'] ?? 'member',
       fcmToken: data['fcmToken'] ?? '',
       pin: data['pin'] as String?,
+      pinRequired: data['pinRequired'] as bool? ?? false,
     );
   }
 
@@ -57,9 +60,10 @@ class UserModel {
         'role': role,
         'fcmToken': fcmToken,
         if (pin != null) 'pin': pin,
+        if (pinRequired) 'pinRequired': true,
       };
 
-  UserModel copyWith({List<BankAccount>? accounts, String? pin}) => UserModel(
+  UserModel copyWith({List<BankAccount>? accounts, String? pin, bool? pinRequired}) => UserModel(
         id: id,
         name: name,
         phone: phone,
@@ -67,6 +71,7 @@ class UserModel {
         role: role,
         fcmToken: fcmToken,
         pin: pin ?? this.pin,
+        pinRequired: pinRequired ?? this.pinRequired,
       );
 
   bool get isApprover => role == 'approver';

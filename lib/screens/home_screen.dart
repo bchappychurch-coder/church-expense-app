@@ -200,17 +200,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showPinSetupDialog(String userId) {
+  void _showPinSetupDialog(String userId, {VoidCallback? afterSetup}) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('비밀번호 설정',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-        content: const Text(
-          '내 이름을 누를 때\n비밀번호를 사용하시겠어요?',
-          style: TextStyle(fontSize: 18, height: 1.6, color: Color(0xFF374151)),
+        title: Text(
+          afterSetup != null ? '비밀번호 재설정' : '비밀번호 설정',
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          afterSetup != null
+              ? '관리자가 비밀번호를 초기화했습니다.\n새 비밀번호를 설정해주세요.'
+              : '내 이름을 누를 때\n비밀번호를 사용하시겠어요?',
+          style: const TextStyle(fontSize: 18, height: 1.6, color: Color(0xFF374151)),
           textAlign: TextAlign.center,
         ),
         actionsAlignment: MainAxisAlignment.center,
@@ -221,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ElevatedButton(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  _showPinInputDialog(userId);
+                  _showPinInputDialog(userId, afterSave: afterSetup);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6366F1),
@@ -234,15 +238,24 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 10),
               OutlinedButton(
-                onPressed: () => Navigator.pop(ctx),
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  if (afterSetup != null) {
+                    await _firestoreService.clearPinRequired(userId);
+                    await _loadUsers();
+                    afterSetup();
+                  }
+                },
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   side: const BorderSide(color: Color(0xFF9CA3AF)),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('그냥 사용하기',
-                    style: TextStyle(fontSize: 18, color: Color(0xFF6B7280))),
+                child: Text(
+                  afterSetup != null ? '나중에 설정하기' : '그냥 사용하기',
+                  style: const TextStyle(fontSize: 18, color: Color(0xFF6B7280)),
+                ),
               ),
               const SizedBox(height: 4),
             ],
@@ -252,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showPinInputDialog(String userId) {
+  void _showPinInputDialog(String userId, {VoidCallback? afterSave}) {
     final pinCtrl = TextEditingController();
 
     Future<void> savePin(BuildContext ctx) async {
@@ -277,6 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
               backgroundColor: Color(0xFF10B981),
             ),
           );
+          afterSave?.call();
         }
       } catch (e) {
         if (mounted) {
@@ -468,9 +482,10 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }).catchError((_) {});
 
-    // PIN이 설정되어 있으면 확인 후 역할 선택, 없으면 바로 진행
     if (user.pin != null && user.pin!.isNotEmpty) {
       _showPinVerifyDialog(user);
+    } else if (user.pinRequired) {
+      _showPinSetupDialog(user.id, afterSetup: () => _showRoleDialog(user));
     } else {
       _showRoleDialog(user);
     }

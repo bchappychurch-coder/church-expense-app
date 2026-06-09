@@ -124,7 +124,10 @@ class FirestoreService {
     if (pin == null) {
       await _db.collection('users').doc(userId).update({'pin': FieldValue.delete()});
     } else {
-      await _db.collection('users').doc(userId).update({'pin': pin});
+      await _db.collection('users').doc(userId).update({
+        'pin': pin,
+        'pinRequired': FieldValue.delete(),
+      });
     }
   }
 
@@ -141,9 +144,16 @@ class FirestoreService {
         snap.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList());
   }
 
+  Future<void> clearPinRequired(String userId) async {
+    await _db.collection('users').doc(userId).update({'pinRequired': FieldValue.delete()});
+  }
+
   Future<void> clearPinReset(String userId) async {
     await _db.collection('pinResetRequests').doc(userId).delete();
-    await updateUserPin(userId, null);
+    await _db.collection('users').doc(userId).update({
+      'pin': FieldValue.delete(),
+      'pinRequired': true,
+    });
   }
 
   Future<void> saveUserAccounts(String userId, List accounts) async {
