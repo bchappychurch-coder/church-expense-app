@@ -54,7 +54,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('${user.name}님 PIN 초기화'),
-        content: const Text('개인 비밀번호를 삭제하시겠습니까?\n이후 비밀번호 없이 접속됩니다.'),
+        content: const Text('비밀번호를 초기화합니다.\n해당 구성원이 다음 접속 시 새 비밀번호를 설정하게 됩니다.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

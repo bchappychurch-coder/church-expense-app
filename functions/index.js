@@ -1,4 +1,4 @@
-const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
@@ -86,23 +86,34 @@ exports.onExpenseUpdated = onDocumentUpdated('expenses/{expenseId}', async (even
   }
 });
 
-// PIN 초기화 요청 → 담당자에게 알림
-exports.onPinResetRequested = onDocumentCreated('pinResetRequests/{userId}', async (event) => {
-  const request = event.data.data();
+// PIN 초기화 요청 → 담당자에게 알림 (create/update 모두 처리)
+exports.onPinResetRequested = onDocumentWritten('pinResetRequests/{userId}', async (event) => {
+  if (!event.data.after.exists) return; // 삭제 이벤트 무시
+
+  const request = event.data.after.data();
 
   const managerSnap = await db.collection('users')
     .where('role', '==', 'manager').limit(1).get();
   const token = managerSnap.docs[0]?.data()?.fcmToken;
-  if (!token) return;
+  if (!token) {
+    console.log('담당자 FCM 토큰 없음');
+    return;
+  }
 
-  await getMessaging().send({
-    token,
-    notification: {
-      title: 'PIN 초기화 요청',
-      body: `${request.userName}님이 비밀번호 초기화를 요청했습니다`,
-    },
-    android: { priority: 'high' },
-  });
+  try {
+    await getMessaging().send({
+      token,
+      notification: {
+        title: 'PIN 초기화 요청',
+        body: `${request.userName}님이 비밀번호 초기화를 요청했습니다`,
+      },
+      android: { priority: 'high' },
+      webpush: { headers: { Urgency: 'high' } },
+    });
+    console.log('PIN 초기화 알림 전송 완료:', request.userName);
+  } catch (e) {
+    console.error('FCM 전송 실패:', e);
+  }
 });
 
 function _formatAmount(amount) {
