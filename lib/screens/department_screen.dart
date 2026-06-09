@@ -66,8 +66,9 @@ class DepartmentScreen extends StatelessWidget {
                     return const Center(child: CircularProgressIndicator());
                   }
                   final raw = snapshot.data ?? ['사업부', '전도국', '선교국', '기타 선교회'];
-                  final others = raw.where((d) => d != '전교인').toList()..sort();
-                  final departments = [...raw.where((d) => d == '전교인'), ...others];
+                  final normal = raw.where((d) => d != '전교인' && !d.contains('기타')).toList()..sort();
+                  final gita = raw.where((d) => d != '전교인' && d.contains('기타')).toList()..sort();
+                  final departments = [...raw.where((d) => d == '전교인'), ...normal, ...gita];
                   return GridView.count(
                     crossAxisCount: 2,
                     crossAxisSpacing: 14,

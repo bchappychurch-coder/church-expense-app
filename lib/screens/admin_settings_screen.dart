@@ -48,6 +48,41 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     });
   }
 
+  Future<void> _resetUserPin(UserModel user) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('${user.name}님 PIN 초기화'),
+        content: const Text('개인 비밀번호를 삭제하시겠습니까?\n이후 비밀번호 없이 접속됩니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소', style: TextStyle(color: Color(0xFF6B7280))),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+            child: const Text('초기화', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _saving = true);
+    try {
+      await _firestoreService.clearPinReset(user.id);
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${user.name}님의 비밀번호가 초기화되었습니다')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   Future<void> _savePurposes() async {
     setState(() => _saving = true);
     await _firestoreService.updatePurposes(_purposes);
@@ -481,6 +516,75 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                 ListView(
                   padding: const EdgeInsets.all(24),
                   children: [
+                    // ── PIN 초기화 요청 ──
+                    StreamBuilder<List<Map<String, dynamic>>>(
+                      stream: _firestoreService.streamPinResetRequests(),
+                      builder: (context, snapshot) {
+                        final requests = snapshot.data ?? [];
+                        if (requests.isEmpty) return const SizedBox.shrink();
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _SectionHeader(
+                              icon: Icons.lock_reset,
+                              title: 'PIN 초기화 요청 (${requests.length})',
+                            ),
+                            const SizedBox(height: 8),
+                            ...requests.map((req) {
+                              final userId = req['id'] as String;
+                              final userName = req['userName'] as String? ?? userId;
+                              final user = _allUsers.firstWhere(
+                                (u) => u.id == userId,
+                                orElse: () => UserModel(
+                                  id: userId, name: userName,
+                                  phone: '', role: 'member',
+                                ),
+                              );
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF7ED),
+                                  border: Border.all(color: const Color(0xFFFED7AA)),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.lock_open,
+                                        color: Color(0xFFEA580C), size: 22),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text('$userName님 비밀번호 초기화 요청',
+                                          style: const TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF7C2D12))),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _resetUserPin(user),
+                                      child: const Text('초기화',
+                                          style: TextStyle(
+                                              color: Color(0xFFDC2626),
+                                              fontWeight: FontWeight.bold)),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _firestoreService
+                                          .clearPinReset(userId),
+                                      child: const Text('무시',
+                                          style: TextStyle(
+                                              color: Color(0xFF9CA3AF))),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                            const SizedBox(height: 24),
+                          ],
+                        );
+                      },
+                    ),
+
                     // ── 구성원 관리 ──
                     _SectionHeader(
                       icon: Icons.people,
@@ -513,6 +617,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                             roleLabels: _roleLabels,
                             onEdit: () => _showMemberDialog(editing: user),
                             onDelete: () => _deleteMember(user),
+                            onResetPin: () => _resetUserPin(user),
                           )),
 
                     const SizedBox(height: 32),
@@ -726,12 +831,14 @@ class _MemberTile extends StatelessWidget {
   final Map<String, String> roleLabels;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback? onResetPin;
 
   const _MemberTile({
     required this.user,
     required this.roleLabels,
     required this.onEdit,
     required this.onDelete,
+    this.onResetPin,
   });
 
   @override
@@ -790,6 +897,13 @@ class _MemberTile extends StatelessWidget {
               ],
             ),
           ),
+          if (onResetPin != null && user.pin != null && user.pin!.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.lock_reset,
+                  color: Color(0xFFEA580C), size: 22),
+              tooltip: 'PIN 초기화',
+              onPressed: onResetPin,
+            ),
           IconButton(
             icon: const Icon(Icons.edit_outlined,
                 color: Color(0xFF6366F1), size: 22),

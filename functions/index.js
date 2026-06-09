@@ -86,6 +86,25 @@ exports.onExpenseUpdated = onDocumentUpdated('expenses/{expenseId}', async (even
   }
 });
 
+// PIN 초기화 요청 → 담당자에게 알림
+exports.onPinResetRequested = onDocumentCreated('pinResetRequests/{userId}', async (event) => {
+  const request = event.data.data();
+
+  const managerSnap = await db.collection('users')
+    .where('role', '==', 'manager').limit(1).get();
+  const token = managerSnap.docs[0]?.data()?.fcmToken;
+  if (!token) return;
+
+  await getMessaging().send({
+    token,
+    notification: {
+      title: 'PIN 초기화 요청',
+      body: `${request.userName}님이 비밀번호 초기화를 요청했습니다`,
+    },
+    android: { priority: 'high' },
+  });
+});
+
 function _formatAmount(amount) {
   return amount.toLocaleString('ko-KR') + '원';
 }

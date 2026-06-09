@@ -341,6 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showPinVerifyDialog(UserModel user) {
     final pinCtrl = TextEditingController();
     int failCount = 0;
+    const maxAttempts = 10;
 
     void verify(BuildContext ctx, StateSetter setDlg) {
       if (pinCtrl.text.trim() == user.pin) {
@@ -350,14 +351,14 @@ class _HomeScreenState extends State<HomeScreen> {
         pinCtrl.clear();
         failCount++;
         setDlg(() {});
-        if (failCount >= 5) {
+        if (failCount >= maxAttempts) {
           Navigator.pop(ctx);
           showDialog(
             context: context,
             builder: (ctx2) => AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text('비밀번호 5회 오류',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              title: Text('비밀번호 ${maxAttempts}회 오류',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               content: const Text(
                 '관리자에게 비밀번호 리셋을\n요청할까요?',
                 style: TextStyle(fontSize: 17, height: 1.6),
@@ -395,7 +396,7 @@ class _HomeScreenState extends State<HomeScreen> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('비밀번호가 틀렸습니다 ($failCount/5회)'),
+              content: Text('비밀번호가 틀렸습니다 ($failCount/${maxAttempts}회)'),
               backgroundColor: const Color(0xFFDC2626),
               duration: const Duration(seconds: 2),
             ),

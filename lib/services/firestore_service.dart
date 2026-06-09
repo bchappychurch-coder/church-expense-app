@@ -138,7 +138,7 @@ class FirestoreService {
 
   Stream<List<Map<String, dynamic>>> streamPinResetRequests() {
     return _db.collection('pinResetRequests').snapshots().map((snap) =>
-        snap.docs.map((d) => {'id': d.id, ...d.data()}).toList());
+        snap.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList());
   }
 
   Future<void> clearPinReset(String userId) async {
