@@ -267,8 +267,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     Future<void> savePin(BuildContext ctx) async {
       final pin = pinCtrl.text.trim();
+      final messenger = ScaffoldMessenger.of(context);
       if (pin.length < 4) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
           const SnackBar(
             content: Text('비밀번호는 4자리 이상 입력해주세요'),
             backgroundColor: Color(0xFFDC2626),
@@ -278,21 +280,27 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       try {
         await _firestoreService.updateUserPin(userId, pin);
-        await _loadUsers();
         if (ctx.mounted) Navigator.pop(ctx);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
             const SnackBar(
               content: Text('비밀번호가 설정되었습니다'),
               backgroundColor: Color(0xFF10B981),
+              duration: Duration(seconds: 2),
             ),
           );
           afterSave?.call();
         }
+        _loadUsers(); // 백그라운드로 목록 갱신
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('저장 실패: $e'), backgroundColor: const Color(0xFFDC2626)),
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('저장 실패: $e'),
+              backgroundColor: const Color(0xFFDC2626),
+            ),
           );
         }
       }
