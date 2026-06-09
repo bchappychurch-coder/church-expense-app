@@ -5,7 +5,16 @@ const _vapidKey =
     'BMIxLqH9QRndaQC-n8CnqtmWZQWPPZeL0RK9RMREpzTKwvVUtoB8DidVsJHdmBSN0j4x2Ox_sdqRfLXnBckNEms';
 
 class NotificationService {
-  Future<String?> initialize() async {
+  /// 앱 시작 시 호출 — 안드로이드 백그라운드 핸들러만 등록
+  Future<void> initialize() async {
+    if (kIsWeb) return;
+    try {
+      FirebaseMessaging.onBackgroundMessage(_backgroundMessageHandler);
+    } catch (_) {}
+  }
+
+  /// 사용자가 이름을 탭할 때 호출 — 권한 요청 후 토큰 반환
+  Future<String?> requestPermissionAndGetToken() async {
     try {
       final messaging = FirebaseMessaging.instance;
       final settings = await messaging.requestPermission(
@@ -16,12 +25,9 @@ class NotificationService {
       if (settings.authorizationStatus != AuthorizationStatus.authorized) {
         return null;
       }
-      if (!kIsWeb) {
-        FirebaseMessaging.onBackgroundMessage(_backgroundMessageHandler);
-      }
       return await messaging.getToken(vapidKey: kIsWeb ? _vapidKey : null);
     } catch (e) {
-      debugPrint('FCM 초기화 실패: $e');
+      debugPrint('FCM 토큰 발급 실패: $e');
       return null;
     }
   }

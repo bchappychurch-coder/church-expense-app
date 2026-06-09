@@ -48,11 +48,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _initNotifications() async {
     try {
-      final token = await _notificationService.initialize();
-      debugPrint('FCM Token: $token');
-    } catch (e) {
-      debugPrint('FCM 초기화 오류 (무시): $e');
-    }
+      await _notificationService.initialize();
+    } catch (_) {}
   }
 
   Future<void> _checkCameraResume() async {
@@ -475,9 +472,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onUserSelected(UserModel user) {
     context.read<AppProvider>().setUser(user);
 
-    // 백그라운드로 FCM 토큰 업데이트 (실패해도 무관)
-    _notificationService.getToken().then((token) {
-      if (token != null) {
+    // 이름 탭 시 (사용자 제스처) 권한 요청 + FCM 토큰 저장
+    _notificationService.requestPermissionAndGetToken().then((token) {
+      if (token != null && token.isNotEmpty) {
         _firestoreService.updateFcmToken(user.id, token);
       }
     }).catchError((_) {});
