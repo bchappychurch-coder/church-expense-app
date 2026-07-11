@@ -691,37 +691,29 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: const Color(0xFFE5E7EB)),
                     ),
                     child: Row(
                       children: [
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '입금 계좌',
-                              style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              '국민은행  66590101759600',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF374151),
-                              ),
-                            ),
-                          ],
+                        const Text(
+                          '국민은행  66590101759600',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151),
+                          ),
                         ),
                         const Spacer(),
                         IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
                           onPressed: () {
                             Clipboard.setData(
                               const ClipboardData(text: '66590101759600'),
@@ -734,43 +726,35 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             );
                           },
-                          icon: const Icon(Icons.copy, size: 20, color: Color(0xFF6366F1)),
+                          icon: const Icon(Icons.copy, size: 16, color: Color(0xFF6366F1)),
                           tooltip: '복사',
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: const Color(0xFFE5E7EB)),
                     ),
                     child: Row(
                       children: [
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '앱 주소',
-                              style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'church-expense-app.web.app',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF374151),
-                              ),
-                            ),
-                          ],
+                        const Text(
+                          'church-expense-app.web.app',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151),
+                          ),
                         ),
                         const Spacer(),
                         IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
                           onPressed: () {
                             Clipboard.setData(
                               const ClipboardData(text: 'https://church-expense-app.web.app'),
@@ -783,7 +767,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             );
                           },
-                          icon: const Icon(Icons.copy, size: 20, color: Color(0xFF6366F1)),
+                          icon: const Icon(Icons.copy, size: 16, color: Color(0xFF6366F1)),
                           tooltip: '복사',
                         ),
                       ],
