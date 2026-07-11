@@ -721,45 +721,40 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  GestureDetector(
-                    onTap: () => _copyToClipboard('66590101759600', '계좌번호가 복사되었습니다'),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.copy, size: 13, color: Color(0xFF9CA3AF)),
-                          SizedBox(width: 6),
-                          Text('국민은행 66590101759600',
-                              style: TextStyle(fontSize: 12, color: Color(0xFF374151))),
-                        ],
-                      ),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  GestureDetector(
-                    onTap: () => _copyToClipboard('https://church-expense-app.web.app', '앱 주소가 복사되었습니다'),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.copy, size: 13, color: Color(0xFF9CA3AF)),
-                          SizedBox(width: 6),
-                          Text('church-expense-app.web.app',
-                              style: TextStyle(fontSize: 12, color: Color(0xFF374151))),
-                        ],
-                      ),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => _copyToClipboard('66590101759600', '계좌번호가 복사되었습니다'),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.copy, size: 13, color: Color(0xFF9CA3AF)),
+                              SizedBox(width: 4),
+                              Text('국민 66590101759600',
+                                  style: TextStyle(fontSize: 12, color: Color(0xFF374151))),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () => _copyToClipboard('https://church-expense-app.web.app', '앱 주소가 복사되었습니다'),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.copy, size: 13, color: Color(0xFF9CA3AF)),
+                              SizedBox(width: 4),
+                              Text('church-expense-app.web.app',
+                                  style: TextStyle(fontSize: 12, color: Color(0xFF374151))),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
