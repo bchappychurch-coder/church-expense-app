@@ -693,8 +693,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 6),
                   GestureDetector(
-                    onTap: () {
-                      Clipboard.setData(const ClipboardData(text: '66590101759600'));
+                    onTap: () async {
+                      await Clipboard.setData(const ClipboardData(text: '66590101759600'));
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                         content: Text('계좌번호가 복사되었습니다'),
                         backgroundColor: Color(0xFF10B981),
@@ -721,8 +722,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 3),
                   GestureDetector(
-                    onTap: () {
-                      Clipboard.setData(const ClipboardData(text: 'https://church-expense-app.web.app'));
+                    onTap: () async {
+                      await Clipboard.setData(const ClipboardData(text: 'https://church-expense-app.web.app'));
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                         content: Text('앱 주소가 복사되었습니다'),
                         backgroundColor: Color(0xFF10B981),
