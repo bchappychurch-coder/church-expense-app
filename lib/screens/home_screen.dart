@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../providers/app_provider.dart';
@@ -28,6 +30,28 @@ class _HomeScreenState extends State<HomeScreen> {
   final _notificationService = NotificationService();
   List<UserModel> _users = [];
   bool _loading = true;
+
+  void _copyToClipboard(String text, String message) {
+    try {
+      final textarea = html.TextAreaElement()
+        ..value = text
+        ..style.position = 'fixed'
+        ..style.opacity = '0';
+      html.document.body!.append(textarea);
+      textarea.select();
+      html.document.execCommand('copy');
+      textarea.remove();
+    } catch (_) {
+      Clipboard.setData(ClipboardData(text: text));
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(message),
+        backgroundColor: const Color(0xFF10B981),
+        duration: const Duration(seconds: 2),
+      ));
+    }
+  }
 
   @override
   void initState() {
@@ -693,15 +717,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 6),
                   GestureDetector(
-                    onTap: () async {
-                      await Clipboard.setData(const ClipboardData(text: '66590101759600'));
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('계좌번호가 복사되었습니다'),
-                        backgroundColor: Color(0xFF10B981),
-                        duration: Duration(seconds: 2),
-                      ));
-                    },
+                    onTap: () => _copyToClipboard('66590101759600', '계좌번호가 복사되었습니다'),
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
@@ -722,15 +738,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 3),
                   GestureDetector(
-                    onTap: () async {
-                      await Clipboard.setData(const ClipboardData(text: 'https://church-expense-app.web.app'));
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('앱 주소가 복사되었습니다'),
-                        backgroundColor: Color(0xFF10B981),
-                        duration: Duration(seconds: 2),
-                      ));
-                    },
+                    onTap: () => _copyToClipboard('https://church-expense-app.web.app', '앱 주소가 복사되었습니다'),
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
