@@ -36,9 +36,14 @@ class _HomeScreenState extends State<HomeScreen> {
       final textarea = html.TextAreaElement()
         ..value = text
         ..style.position = 'fixed'
-        ..style.opacity = '0';
+        ..style.top = '0'
+        ..style.left = '0'
+        ..style.width = '2em'
+        ..style.height = '2em'
+        ..readOnly = true;
       html.document.body!.append(textarea);
-      textarea.select();
+      textarea.focus();
+      textarea.setSelectionRange(0, 99999);
       html.document.execCommand('copy');
       textarea.remove();
     } catch (_) {
