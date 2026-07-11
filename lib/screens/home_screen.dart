@@ -691,86 +691,60 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Text(
-                          '국민은행  66590101759600',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF374151),
-                          ),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          onPressed: () {
-                            Clipboard.setData(
-                              const ClipboardData(text: '66590101759600'),
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('계좌번호가 복사되었습니다'),
-                                backgroundColor: Color(0xFF10B981),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.copy, size: 16, color: Color(0xFF6366F1)),
-                          tooltip: '복사',
-                        ),
-                      ],
+                  const SizedBox(height: 6),
+                  GestureDetector(
+                    onTap: () {
+                      Clipboard.setData(const ClipboardData(text: '66590101759600'));
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('계좌번호가 복사되었습니다'),
+                        backgroundColor: Color(0xFF10B981),
+                        duration: Duration(seconds: 2),
+                      ));
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.copy, size: 13, color: Color(0xFF9CA3AF)),
+                          SizedBox(width: 6),
+                          Text('국민은행 66590101759600',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF374151))),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Text(
-                          'church-expense-app.web.app',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF374151),
-                          ),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          onPressed: () {
-                            Clipboard.setData(
-                              const ClipboardData(text: 'https://church-expense-app.web.app'),
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('앱 주소가 복사되었습니다'),
-                                backgroundColor: Color(0xFF10B981),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.copy, size: 16, color: Color(0xFF6366F1)),
-                          tooltip: '복사',
-                        ),
-                      ],
+                  const SizedBox(height: 3),
+                  GestureDetector(
+                    onTap: () {
+                      Clipboard.setData(const ClipboardData(text: 'https://church-expense-app.web.app'));
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('앱 주소가 복사되었습니다'),
+                        backgroundColor: Color(0xFF10B981),
+                        duration: Duration(seconds: 2),
+                      ));
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.copy, size: 13, color: Color(0xFF9CA3AF)),
+                          SizedBox(width: 6),
+                          Text('church-expense-app.web.app',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF374151))),
+                        ],
+                      ),
                     ),
                   ),
                 ],
