@@ -95,7 +95,7 @@ class _MyHistoryScreenState extends State<MyHistoryScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: const Color(0xFF6366F1),
-        title: const Text('내 신청 내역',
+        title: const Text('내 청구 내역',
             style: TextStyle(color: Colors.white, fontSize: 20)),
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,

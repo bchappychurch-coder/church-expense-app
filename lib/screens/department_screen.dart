@@ -66,16 +66,18 @@ class DepartmentScreen extends StatelessWidget {
                     return const Center(child: CircularProgressIndicator());
                   }
                   final raw = snapshot.data ?? ['사업부', '전도국', '선교국', '기타 선교회'];
-                  final others = raw.where((d) => d != '전교인').toList()..sort();
-                  final departments = [...raw.where((d) => d == '전교인'), ...others];
+                  final normal = raw.where((d) => d != '전교인' && !d.contains('기타')).toList()..sort();
+                  final gita = raw.where((d) => d != '전교인' && d.contains('기타')).toList()..sort();
+                  final departments = [...raw.where((d) => d == '전교인'), ...normal, ...gita];
                   return GridView.count(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 1.8,
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                    childAspectRatio: 1.4,
                     children: departments.map((dept) {
                       return BigButton(
                         label: dept,
+                        fontSize: 20,
                         color: const Color(0xFFF0FDF4),
                         borderColor: const Color(0xFF86EFAC),
                         onTap: () async {

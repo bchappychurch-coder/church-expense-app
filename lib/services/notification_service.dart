@@ -1,24 +1,41 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
+const _vapidKey =
+    'BMIxLqH9QRndaQC-n8CnqtmWZQWPPZeL0RK9RMREpzTKwvVUtoB8DidVsJHdmBSN0j4x2Ox_sdqRfLXnBckNEms';
+
 class NotificationService {
-  Future<String?> initialize() async {
-    if (kIsWeb) return null; // 웹에서는 FCM 사용 안 함
+  /// 앱 시작 시 호출 — 안드로이드 백그라운드 핸들러만 등록
+  Future<void> initialize() async {
+    if (kIsWeb) return;
+    try {
+      FirebaseMessaging.onBackgroundMessage(_backgroundMessageHandler);
+    } catch (_) {}
+  }
+
+  /// 사용자가 이름을 탭할 때 호출 — 권한 요청 후 토큰 반환
+  Future<String?> requestPermissionAndGetToken() async {
     try {
       final messaging = FirebaseMessaging.instance;
-      await messaging.requestPermission(alert: true, badge: true, sound: true);
-      FirebaseMessaging.onBackgroundMessage(_backgroundMessageHandler);
-      return await messaging.getToken();
+      final settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+        return null;
+      }
+      return await messaging.getToken(vapidKey: kIsWeb ? _vapidKey : null);
     } catch (e) {
-      debugPrint('FCM 초기화 실패: $e');
+      debugPrint('FCM 토큰 발급 실패: $e');
       return null;
     }
   }
 
   Future<String?> getToken() async {
-    if (kIsWeb) return null;
     try {
-      return await FirebaseMessaging.instance.getToken();
+      return await FirebaseMessaging.instance
+          .getToken(vapidKey: kIsWeb ? _vapidKey : null);
     } catch (_) {
       return null;
     }

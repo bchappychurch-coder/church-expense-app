@@ -120,6 +120,42 @@ class FirestoreService {
     await _db.collection('users').doc(userId).update({'fcmToken': token});
   }
 
+  Future<void> updateUserPin(String userId, String? pin) async {
+    if (pin == null) {
+      await _db.collection('users').doc(userId).update({'pin': FieldValue.delete()});
+    } else {
+      await _db.collection('users').doc(userId).update({
+        'pin': pin,
+        'pinRequired': FieldValue.delete(),
+      });
+    }
+  }
+
+  Future<void> requestPinReset(String userId, String userName) async {
+    await _db.collection('pinResetRequests').doc(userId).set({
+      'userId': userId,
+      'userName': userName,
+      'requestedAt': Timestamp.now(),
+    });
+  }
+
+  Stream<List<Map<String, dynamic>>> streamPinResetRequests() {
+    return _db.collection('pinResetRequests').snapshots().map((snap) =>
+        snap.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList());
+  }
+
+  Future<void> clearPinRequired(String userId) async {
+    await _db.collection('users').doc(userId).update({'pinRequired': FieldValue.delete()});
+  }
+
+  Future<void> clearPinReset(String userId) async {
+    await _db.collection('pinResetRequests').doc(userId).delete();
+    await _db.collection('users').doc(userId).update({
+      'pin': FieldValue.delete(),
+      'pinRequired': true,
+    });
+  }
+
   Future<void> saveUserAccounts(String userId, List accounts) async {
     await _db.collection('users').doc(userId).update({
       'accounts': accounts.map((a) => a.toMap()).toList(),

@@ -25,7 +25,7 @@ class ChurchExpenseApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => AppProvider(),
       child: MaterialApp(
-        title: '행복한교회 지출청구',
+        title: '행복한교회 지출청구앱',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           primarySwatch: Colors.indigo,

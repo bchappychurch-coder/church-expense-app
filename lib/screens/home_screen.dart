@@ -49,11 +49,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _initNotifications() async {
     try {
-      final token = await _notificationService.initialize();
-      debugPrint('FCM Token: $token');
-    } catch (e) {
-      debugPrint('FCM 초기화 오류 (무시): $e');
-    }
+      await _notificationService.initialize();
+    } catch (_) {}
   }
 
   Future<void> _checkCameraResume() async {
@@ -126,6 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         await _loadUsers();
         if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+        if (mounted) _showPinSetupDialog(name);
       } catch (e) {
         showError('등록 실패: $e');
       }
@@ -200,18 +198,303 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showPinSetupDialog(String userId, {VoidCallback? afterSetup}) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          afterSetup != null ? '비밀번호 재설정' : '비밀번호 설정',
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          afterSetup != null
+              ? '관리자가 비밀번호를 초기화했습니다.\n새 비밀번호를 설정해주세요.'
+              : '내 이름을 누를 때\n비밀번호를 사용하시겠어요?',
+          style: const TextStyle(fontSize: 18, height: 1.6, color: Color(0xFF374151)),
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _showPinInputDialog(userId, afterSave: afterSetup);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('비밀번호 설정하기',
+                    style: TextStyle(fontSize: 18, color: Colors.white)),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  if (afterSetup != null) {
+                    await _firestoreService.clearPinRequired(userId);
+                    await _loadUsers();
+                    afterSetup();
+                  }
+                },
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: Color(0xFF9CA3AF)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(
+                  afterSetup != null ? '나중에 설정하기' : '그냥 사용하기',
+                  style: const TextStyle(fontSize: 18, color: Color(0xFF6B7280)),
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPinInputDialog(String userId, {VoidCallback? afterSave}) {
+    final pinCtrl = TextEditingController();
+
+    Future<void> savePin(BuildContext ctx) async {
+      final pin = pinCtrl.text.trim();
+      final messenger = ScaffoldMessenger.of(context);
+      if (pin.length < 4) {
+        messenger.clearSnackBars();
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('비밀번호는 4자리 이상 입력해주세요'),
+            backgroundColor: Color(0xFFDC2626),
+          ),
+        );
+        return;
+      }
+      try {
+        await _firestoreService.updateUserPin(userId, pin);
+        if (ctx.mounted) Navigator.pop(ctx);
+        if (mounted) {
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('비밀번호가 설정되었습니다'),
+              backgroundColor: Color(0xFF10B981),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          afterSave?.call();
+        }
+        _loadUsers(); // 백그라운드로 목록 갱신
+      } catch (e) {
+        if (mounted) {
+          messenger.clearSnackBars();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('저장 실패: $e'),
+              backgroundColor: const Color(0xFFDC2626),
+            ),
+          );
+        }
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('비밀번호 입력',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('사용할 비밀번호(숫자)를 입력해주세요',
+                style: TextStyle(fontSize: 15, color: Color(0xFF9CA3AF))),
+            const SizedBox(height: 16),
+            TextField(
+              controller: pinCtrl,
+              obscureText: true,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(fontSize: 24, letterSpacing: 8),
+              textAlign: TextAlign.center,
+              onSubmitted: (_) => savePin(ctx),
+              decoration: InputDecoration(
+                hintText: '● ● ● ●',
+                hintStyle: const TextStyle(fontSize: 18, color: Color(0xFF9CA3AF), letterSpacing: 4),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소', style: TextStyle(color: Color(0xFF6B7280), fontSize: 16)),
+          ),
+          ElevatedButton(
+            onPressed: () => savePin(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: const Text('저장', style: TextStyle(fontSize: 16, color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPinVerifyDialog(UserModel user) {
+    final pinCtrl = TextEditingController();
+    int failCount = 0;
+    const maxAttempts = 10;
+
+    void verify(BuildContext ctx, StateSetter setDlg) {
+      if (pinCtrl.text.trim() == user.pin) {
+        Navigator.pop(ctx);
+        _showRoleDialog(user);
+      } else {
+        pinCtrl.clear();
+        failCount++;
+        setDlg(() {});
+        if (failCount >= maxAttempts) {
+          Navigator.pop(ctx);
+          showDialog(
+            context: context,
+            builder: (ctx2) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text('비밀번호 ${maxAttempts}회 오류',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              content: const Text(
+                '관리자에게 비밀번호 리셋을\n요청할까요?',
+                style: TextStyle(fontSize: 17, height: 1.6),
+                textAlign: TextAlign.center,
+              ),
+              actionsAlignment: MainAxisAlignment.center,
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx2),
+                  child: const Text('취소', style: TextStyle(color: Color(0xFF6B7280), fontSize: 16)),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    await _firestoreService.requestPinReset(user.id, user.name);
+                    if (ctx2.mounted) Navigator.pop(ctx2);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('관리자에게 리셋 요청을 보냈습니다'),
+                          backgroundColor: Color(0xFF10B981),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  child: const Text('요청하기', style: TextStyle(fontSize: 16, color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('비밀번호가 틀렸습니다 ($failCount/${maxAttempts}회)'),
+              backgroundColor: const Color(0xFFDC2626),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('${user.name}님',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('비밀번호를 입력해주세요',
+                  style: TextStyle(fontSize: 16, color: Color(0xFF6B7280))),
+              const SizedBox(height: 16),
+              TextField(
+                controller: pinCtrl,
+                obscureText: true,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(fontSize: 24, letterSpacing: 8),
+                textAlign: TextAlign.center,
+                onSubmitted: (_) => verify(ctx, setDlg),
+                decoration: InputDecoration(
+                  hintText: '● ● ● ●',
+                  hintStyle: const TextStyle(fontSize: 18, color: Color(0xFF9CA3AF), letterSpacing: 4),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('취소', style: TextStyle(color: Color(0xFF6B7280), fontSize: 16)),
+            ),
+            ElevatedButton(
+              onPressed: () => verify(ctx, setDlg),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: const Text('확인', style: TextStyle(fontSize: 16, color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _onUserSelected(UserModel user) {
     context.read<AppProvider>().setUser(user);
 
-    // 백그라운드로 FCM 토큰 업데이트 (실패해도 무관)
-    _notificationService.getToken().then((token) {
-      if (token != null) {
+    // 이름 탭 시 (사용자 제스처) 권한 요청 + FCM 토큰 저장
+    _notificationService.requestPermissionAndGetToken().then((token) {
+      if (token != null && token.isNotEmpty) {
         _firestoreService.updateFcmToken(user.id, token);
       }
     }).catchError((_) {});
 
-    // 모든 사용자 → 역할 선택 다이얼로그
-    _showRoleDialog(user);
+    if (user.pin != null && user.pin!.isNotEmpty) {
+      _showPinVerifyDialog(user);
+    } else if (user.pinRequired) {
+      _showPinSetupDialog(user.id, afterSetup: () => _showRoleDialog(user));
+    } else {
+      _showRoleDialog(user);
+    }
   }
 
   void _showRoleDialog(UserModel user) {
@@ -231,7 +514,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               ElevatedButton.icon(
                 icon: const Icon(Icons.receipt_long, color: Colors.white),
-                label: const Text('지출 신청하기',
+                label: const Text('지출 청구하기',
                     style: TextStyle(fontSize: 18, color: Colors.white)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6366F1),
@@ -249,7 +532,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 10),
               ElevatedButton.icon(
                 icon: const Icon(Icons.history, color: Colors.white),
-                label: const Text('내 신청 내역',
+                label: const Text('내 청구 내역',
                     style: TextStyle(fontSize: 18, color: Colors.white)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6366F1),
@@ -311,7 +594,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Column(
           children: [
             Text(
-              '행복한교회 지출청구',
+              '행복한교회 지출청구앱',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 20,
@@ -360,7 +643,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    '이름을 선택하면 지출 신청 화면으로 이동합니다',
+                    '이름을 선택하면 지출 청구 화면으로 이동합니다',
                     style: TextStyle(fontSize: 15, color: Color(0xFF9CA3AF)),
                   ),
                   const SizedBox(height: 12),

@@ -7,6 +7,7 @@ class BigButton extends StatelessWidget {
   final Color? color;
   final Color? borderColor;
   final bool selected;
+  final double? fontSize;
 
   const BigButton({
     super.key,
@@ -16,6 +17,7 @@ class BigButton extends StatelessWidget {
     this.color,
     this.borderColor,
     this.selected = false,
+    this.fontSize,
   });
 
   @override
@@ -34,7 +36,7 @@ class BigButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          padding: EdgeInsets.symmetric(horizontal: fontSize != null ? 12 : 8, vertical: fontSize != null ? 10 : 6),
           decoration: BoxDecoration(
             border: Border.all(color: border, width: selected ? 2.5 : 1.5),
             borderRadius: BorderRadius.circular(14),
@@ -47,7 +49,7 @@ class BigButton extends StatelessWidget {
                 label,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: fontSize ?? 13,
                   fontWeight: FontWeight.w600,
                   color: selected
                       ? const Color(0xFF3730A3)
