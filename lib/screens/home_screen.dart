@@ -71,24 +71,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _checkPwaAvailable() {
-    // 항상 버튼 표시 (설치 이벤트 유무와 무관)
-    Future.microtask(() {
-      if (mounted) setState(() => _pwaAvailable = true);
-    });
+    // beforeinstallprompt 이벤트 실시간 리스닝
+    try {
+      html.window.addEventListener('pwaReady', (event) {
+        if (mounted) setState(() => _pwaAvailable = true);
+      });
+      // 이미 발생한 경우 체크
+      final already = js.context['pwaInstallAvailable'] == true;
+      if (already && mounted) setState(() => _pwaAvailable = true);
+    } catch (_) {}
   }
 
   void _installPwa() {
     try {
-      final available = js.context['pwaInstallAvailable'] == true;
-      if (available) {
-        js.context.callMethod('triggerPwaInstall', []);
-        setState(() => _pwaAvailable = false);
-      } else {
-        _showInstallGuide();
-      }
-    } catch (_) {
-      _showInstallGuide();
-    }
+      js.context.callMethod('triggerPwaInstall', []);
+      setState(() => _pwaAvailable = false);
+    } catch (_) {}
   }
 
   void _showInstallGuide() {
