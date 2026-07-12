@@ -294,6 +294,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showPinInputDialog(String userId, {VoidCallback? afterSave}) {
     final pinCtrl = TextEditingController();
+    final pinFocus = FocusNode();
+    bool focusRequested = false;
 
     Future<void> savePin(BuildContext ctx) async {
       final pin = pinCtrl.text.trim();
@@ -338,7 +340,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) {
+        if (!focusRequested) {
+          focusRequested = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) => pinFocus.requestFocus());
+        }
+        return AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('비밀번호 입력',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -350,8 +357,8 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: pinCtrl,
+              focusNode: pinFocus,
               obscureText: true,
-              autofocus: true,
               keyboardType: TextInputType.number,
               style: const TextStyle(fontSize: 24, letterSpacing: 8),
               textAlign: TextAlign.center,
@@ -383,12 +390,15 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Text('저장', style: TextStyle(fontSize: 16, color: Colors.white)),
           ),
         ],
-      ),
-    );
+        );
+      },
+    ).then((_) => pinFocus.dispose());
   }
 
   void _showPinVerifyDialog(UserModel user) {
     final pinCtrl = TextEditingController();
+    final pinFocus = FocusNode();
+    bool focusRequested = false;
     int failCount = 0;
     const maxAttempts = 10;
 
@@ -457,7 +467,12 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDlg) => AlertDialog(
+        builder: (ctx, setDlg) {
+          if (!focusRequested) {
+            focusRequested = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) => pinFocus.requestFocus());
+          }
+          return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text('${user.name}님',
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
@@ -469,8 +484,8 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: pinCtrl,
+                focusNode: pinFocus,
                 obscureText: true,
-                autofocus: true,
                 keyboardType: TextInputType.number,
                 style: const TextStyle(fontSize: 24, letterSpacing: 8),
                 textAlign: TextAlign.center,
@@ -502,9 +517,10 @@ class _HomeScreenState extends State<HomeScreen> {
               child: const Text('확인', style: TextStyle(fontSize: 16, color: Colors.white)),
             ),
           ],
-        ),
+          );
+        },
       ),
-    );
+    ).then((_) => pinFocus.dispose());
   }
 
   void _onUserSelected(UserModel user) {

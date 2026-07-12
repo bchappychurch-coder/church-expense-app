@@ -8,12 +8,18 @@ Future<void> showPasswordGate(
   VoidCallback onSuccess,
 ) async {
   final controller = TextEditingController();
+  final focusNode = FocusNode();
+  bool focusRequested = false;
   int attempts = 0;
 
   await showDialog(
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setDlg) {
+        if (!focusRequested) {
+          focusRequested = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) => focusNode.requestFocus());
+        }
         Future<void> verify() async {
           final entered = controller.text.trim();
           String stored;
@@ -43,8 +49,8 @@ Future<void> showPasswordGate(
             children: [
               TextField(
                 controller: controller,
+                focusNode: focusNode,
                 obscureText: true,
-                autofocus: true,
                 keyboardType: TextInputType.number,
                 style: const TextStyle(fontSize: 22, letterSpacing: 8),
                 textAlign: TextAlign.center,
@@ -99,5 +105,5 @@ Future<void> showPasswordGate(
         );
       },
     ),
-  );
+  ).then((_) => focusNode.dispose());
 }
