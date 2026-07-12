@@ -103,13 +103,11 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text('📱 안드로이드 크롬', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
             SizedBox(height: 4),
-            Text('크롬 메뉴(⋮) → 홈 화면에 추가
-또는 주소창 오른쪽 설치 아이콘 탭', style: TextStyle(fontSize: 14)),
+            Text('크롬 메뉴(⋮) → 홈 화면에 추가\n또는 주소창 오른쪽 설치 아이콘 탭', style: TextStyle(fontSize: 14)),
             SizedBox(height: 16),
             Text('🍎 아이폰 사파리', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
             SizedBox(height: 4),
-            Text('사파리로 접속 후
-공유(□↑) → 홈 화면에 추가', style: TextStyle(fontSize: 14)),
+            Text('사파리로 접속 후\n공유(□↑) → 홈 화면에 추가', style: TextStyle(fontSize: 14)),
           ],
         ),
         actions: [
