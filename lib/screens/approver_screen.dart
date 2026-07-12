@@ -432,9 +432,11 @@ class _ApprovalDetailState extends State<_ApprovalDetail> {
   @override
   Widget build(BuildContext context) {
     final e = widget.expense;
-    return Padding(
+    return SafeArea(
+      top: false,
+      child: Padding(
       padding: EdgeInsets.fromLTRB(
-          24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 40),
+          24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -533,6 +535,7 @@ class _ApprovalDetailState extends State<_ApprovalDetail> {
           ] else
             const Center(child: CircularProgressIndicator()),
         ],
+      ),
       ),
     );
   }
