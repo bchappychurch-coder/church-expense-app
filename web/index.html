@@ -43,11 +43,29 @@
   -->
   <script src="flutter_bootstrap.js" async></script>
   <script>
+    // 서비스 워커 등록
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('flutter_service_worker.js');
       });
     }
+    // PWA 설치 이벤트 캡처
+    let _pwaPrompt = null;
+    window.pwaInstallAvailable = false;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      _pwaPrompt = e;
+      window.pwaInstallAvailable = true;
+    });
+    window.triggerPwaInstall = function() {
+      if (_pwaPrompt) {
+        _pwaPrompt.prompt();
+        _pwaPrompt.userChoice.then(function() {
+          _pwaPrompt = null;
+          window.pwaInstallAvailable = false;
+        });
+      }
+    };
   </script>
 </body>
 </html>

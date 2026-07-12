@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:js' as js;
 import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../providers/app_provider.dart';
@@ -30,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _notificationService = NotificationService();
   List<UserModel> _users = [];
   bool _loading = true;
+  bool _pwaAvailable = false;
 
   void _copyToClipboard(String text, String message) {
     try {
@@ -64,6 +67,24 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadUsers();
     _initNotifications();
     _checkCameraResume();
+    _checkPwaAvailable();
+  }
+
+  void _checkPwaAvailable() {
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      try {
+        final available = js.context['pwaInstallAvailable'] == true;
+        if (available) setState(() => _pwaAvailable = true);
+      } catch (_) {}
+    });
+  }
+
+  void _installPwa() {
+    try {
+      js.context.callMethod('triggerPwaInstall', []);
+      setState(() => _pwaAvailable = false);
+    } catch (_) {}
   }
 
   Future<void> _loadUsers() async {
@@ -737,6 +758,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 6),
+                  if (_pwaAvailable)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _installPwa,
+                          icon: const Icon(Icons.install_mobile, color: Color(0xFF6366F1)),
+                          label: const Text('홈 화면에 앱 설치',
+                              style: TextStyle(fontSize: 15, color: Color(0xFF6366F1))),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            side: const BorderSide(color: Color(0xFF6366F1)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
