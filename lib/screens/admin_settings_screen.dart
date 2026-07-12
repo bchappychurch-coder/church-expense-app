@@ -427,19 +427,26 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     final oldCtrl = TextEditingController();
     final newCtrl = TextEditingController();
     final confirmCtrl = TextEditingController();
+    final firstFocus = FocusNode();
+    bool focusRequested = false;
     String? error;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDlg) => AlertDialog(
+        builder: (ctx, setDlg) {
+          if (!focusRequested) {
+            focusRequested = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) => firstFocus.requestFocus());
+          }
+          return AlertDialog(
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16)),
           title: const Text('비밀번호 변경'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _PwField(controller: oldCtrl, hint: '현재 비밀번호'),
+              _PwField(controller: oldCtrl, hint: '현재 비밀번호', focusNode: firstFocus),
               const SizedBox(height: 12),
               _PwField(controller: newCtrl, hint: '새 비밀번호'),
               const SizedBox(height: 12),
@@ -491,9 +498,10 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                   style: TextStyle(color: Colors.white)),
             ),
           ],
-        ),
+          );
+        },
       ),
-    );
+    ).then((_) => firstFocus.dispose());
   }
 
   // ── Build ─────────────────────────────────────────
@@ -952,13 +960,15 @@ class _SectionHeader extends StatelessWidget {
 class _PwField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
+  final FocusNode? focusNode;
 
-  const _PwField({required this.controller, required this.hint});
+  const _PwField({required this.controller, required this.hint, this.focusNode});
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       obscureText: true,
       keyboardType: TextInputType.number,
       style: const TextStyle(fontSize: 18),
