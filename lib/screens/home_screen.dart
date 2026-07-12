@@ -71,20 +71,59 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _checkPwaAvailable() {
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      try {
-        final available = js.context['pwaInstallAvailable'] == true;
-        if (available) setState(() => _pwaAvailable = true);
-      } catch (_) {}
+    // 항상 버튼 표시 (설치 이벤트 유무와 무관)
+    Future.microtask(() {
+      if (mounted) setState(() => _pwaAvailable = true);
     });
   }
 
   void _installPwa() {
     try {
-      js.context.callMethod('triggerPwaInstall', []);
-      setState(() => _pwaAvailable = false);
-    } catch (_) {}
+      final available = js.context['pwaInstallAvailable'] == true;
+      if (available) {
+        js.context.callMethod('triggerPwaInstall', []);
+        setState(() => _pwaAvailable = false);
+      } else {
+        _showInstallGuide();
+      }
+    } catch (_) {
+      _showInstallGuide();
+    }
+  }
+
+  void _showInstallGuide() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('홈 화면에 추가', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('📱 안드로이드 크롬', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            SizedBox(height: 4),
+            Text('크롬 메뉴(⋮) → 홈 화면에 추가
+또는 주소창 오른쪽 설치 아이콘 탭', style: TextStyle(fontSize: 14)),
+            SizedBox(height: 16),
+            Text('🍎 아이폰 사파리', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            SizedBox(height: 4),
+            Text('사파리로 접속 후
+공유(□↑) → 홈 화면에 추가', style: TextStyle(fontSize: 14)),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(_),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('확인', style: TextStyle(color: Colors.white, fontSize: 16)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadUsers() async {
