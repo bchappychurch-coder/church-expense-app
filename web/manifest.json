@@ -1,7 +1,7 @@
 {
     "name": "행복한교회 지출청구앱",
     "short_name": "지출청구앱",
-    "start_url": ".",
+    "start_url": "/",
     "display": "standalone",
     "background_color": "#6366F1",
     "theme_color": "#6366F1",
@@ -32,5 +32,6 @@
             "purpose": "maskable"
         }
     ],
-    "id": "/"
+    "id": "/",
+    "scope": "/"
 }
