@@ -732,28 +732,32 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        GestureDetector(
-                          onTap: () => _copyToClipboard('66590101759600', '계좌번호가 복사되었습니다'),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.copy, size: 13, color: Color(0xFF9CA3AF)),
-                              SizedBox(width: 4),
-                              Text('국민 66590101759600',
-                                  style: TextStyle(fontSize: 12, color: Color(0xFF374151))),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        GestureDetector(
-                          onTap: () => _copyToClipboard('2010-0863-7124', '계좌번호가 복사되었습니다'),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.copy, size: 13, color: Color(0xFF9CA3AF)),
-                              SizedBox(width: 4),
-                              Text('수협 2010-0863-7124',
-                                  style: TextStyle(fontSize: 12, color: Color(0xFF374151))),
-                            ],
-                          ),
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () => _copyToClipboard('66590101759600', '계좌번호가 복사되었습니다'),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.copy, size: 13, color: Color(0xFF9CA3AF)),
+                                  SizedBox(width: 4),
+                                  Text('국민 66590101759600',
+                                      style: TextStyle(fontSize: 12, color: Color(0xFF374151))),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            GestureDetector(
+                              onTap: () => _copyToClipboard('2010-0863-7124', '계좌번호가 복사되었습니다'),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.copy, size: 13, color: Color(0xFF9CA3AF)),
+                                  SizedBox(width: 4),
+                                  Text('수협 2010-0863-7124',
+                                      style: TextStyle(fontSize: 12, color: Color(0xFF374151))),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 3),
                         GestureDetector(
