@@ -729,7 +729,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(color: const Color(0xFFE5E7EB)),
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         GestureDetector(
                           onTap: () => _copyToClipboard('66590101759600', '계좌번호가 복사되었습니다'),
@@ -742,7 +743,19 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                         ),
-                        const Spacer(),
+                        const SizedBox(height: 3),
+                        GestureDetector(
+                          onTap: () => _copyToClipboard('2010-0863-7124', '계좌번호가 복사되었습니다'),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.copy, size: 13, color: Color(0xFF9CA3AF)),
+                              SizedBox(width: 4),
+                              Text('수협 2010-0863-7124',
+                                  style: TextStyle(fontSize: 12, color: Color(0xFF374151))),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 3),
                         GestureDetector(
                           onTap: () => _copyToClipboard('https://church-expense-app.web.app', '앱 주소가 복사되었습니다'),
                           child: const Row(
