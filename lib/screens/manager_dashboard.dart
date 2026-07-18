@@ -1035,10 +1035,43 @@ class _DashboardRow extends StatelessWidget {
     );
   }
 
+  void _showReceipt(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('${expense.userName} 영수증',
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.bold)),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ReceiptImageViewer(imageUrl: expense.receiptImageUrl),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
       decoration: BoxDecoration(
         color: selected ? const Color(0xFFF0FDF4) : Colors.white,
         border: Border.all(
@@ -1049,66 +1082,80 @@ class _DashboardRow extends StatelessWidget {
                   : const Color(0xFFE5E7EB),
           width: selected || expense.status == 'approved' ? 2 : 1,
         ),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
           // 체크박스 (승인필요 항목만)
           if (isPending)
             SizedBox(
-              width: 44,
+              width: 36,
               child: Checkbox(
                 value: selected,
                 activeColor: const Color(0xFF16A34A),
                 onChanged: (_) => onToggle?.call(),
                 visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             )
           else
-            const SizedBox(width: 12),
-          // 내용 + 상세보기
+            const SizedBox(width: 10),
+          // 내용 (탭 → 상세)
           Expanded(
             child: GestureDetector(
               onTap: () => _showDetail(context),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 4),
-                child: Row(
+                padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(expense.userName,
-                              style: const TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${expense.department} · ${expense.purpose} · ${expense.description}',
-                            style: const TextStyle(
-                                fontSize: 12, color: Color(0xFF6B7280)),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    Row(
                       children: [
+                        Expanded(
+                          child: Text(expense.userName,
+                              style: const TextStyle(
+                                  fontSize: 13, fontWeight: FontWeight.bold)),
+                        ),
                         Text(expense.formattedAmount,
                             style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 4),
+                                fontSize: 12, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 6),
                         StatusBadge(expense: expense),
                       ],
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(height: 1),
+                    Text(
+                      '${expense.department} · ${expense.purpose} · ${expense.description}',
+                      style: const TextStyle(
+                          fontSize: 11, color: Color(0xFF6B7280)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),
             ),
           ),
+          // 영수증 버튼
+          if (expense.receiptImageUrl.isNotEmpty)
+            GestureDetector(
+              onTap: () => _showReceipt(context),
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEEF2FF),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text('영수증',
+                    style: TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFF6366F1),
+                        fontWeight: FontWeight.w600)),
+              ),
+            )
+          else
+            const SizedBox(width: 8),
         ],
       ),
     );
