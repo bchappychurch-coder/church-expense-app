@@ -270,33 +270,28 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                 },
               ),
 
-              // 일괄결재 섹션
-              _BulkApprovalSection(
-                allExpenses: all,
-                selectedIds: _selectedExpenseIds,
-                onToggleExpense: (id) => setState(() {
-                  _selectedExpenseIds.contains(id)
-                      ? _selectedExpenseIds.remove(id)
-                      : _selectedExpenseIds.add(id);
-                }),
-                onBulkApprove: () => _bulkApprove(service, user.id),
-              ),
-
-              // 필터 행 (미결건·승인건 체크박스 + 직접입력)
+              // 2번째 줄: 필터 (승인필요·기결 + 직접입력)
               Container(
                 color: const Color(0xFFF9FAFB),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
                     _CheckChip(
-                      label: '미결건',
+                      label: '승인필요',
                       checked: _showPending,
                       color: const Color(0xFFF59E0B),
-                      onChanged: (v) => setState(() => _showPending = v),
+                      onChanged: (v) => setState(() {
+                        _showPending = v;
+                        if (!v) {
+                          _selectedExpenseIds.removeWhere((id) => all
+                              .where((e) => _pendingStatuses.contains(e.status))
+                              .any((e) => e.id == id));
+                        }
+                      }),
                     ),
                     const SizedBox(width: 10),
                     _CheckChip(
-                      label: '승인건',
+                      label: '기결',
                       checked: _showApproved,
                       color: const Color(0xFF16A34A),
                       onChanged: (v) => setState(() => _showApproved = v),
@@ -312,10 +307,10 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                 ),
               ),
 
-              // 합산 배너
+              // 합산 + 일괄승인 배너
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 color: const Color(0xFFEEF2FF),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -323,16 +318,36 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                     Text('$_periodLabel · ${filtered.length}건',
                         style: const TextStyle(
                             fontSize: 14, color: Color(0xFF6366F1))),
-                    Text(_formatAmount(filteredTotal),
-                        style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF4338CA))),
+                    if (_selectedExpenseIds.isNotEmpty)
+                      GestureDetector(
+                        onTap: () => _bulkApprove(service, user.id),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF16A34A),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '일괄승인 ${_selectedExpenseIds.length}건',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      )
+                    else
+                      Text(_formatAmount(filteredTotal),
+                          style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF4338CA))),
                   ],
                 ),
               ),
 
-              // 필터된 목록
+              // 목록
               Expanded(
                 child: filtered.isEmpty
                     ? Center(
@@ -344,14 +359,31 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                               fontSize: 16, color: Color(0xFF9CA3AF)),
                         ),
                       )
-                    : ListView.separated(
-                        padding: const EdgeInsets.all(16),
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: filtered.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemBuilder: (context, i) => _ExpenseRow(
-                          expense: filtered[i],
-                          service: service,
-                        ),
+                        itemBuilder: (context, i) {
+                          final expense = filtered[i];
+                          final isPending =
+                              _pendingStatuses.contains(expense.status);
+                          return _DashboardRow(
+                            expense: expense,
+                            service: service,
+                            isPending: isPending,
+                            selected:
+                                _selectedExpenseIds.contains(expense.id),
+                            onToggle: isPending
+                                ? () => setState(() {
+                                      _selectedExpenseIds
+                                              .contains(expense.id!)
+                                          ? _selectedExpenseIds
+                                              .remove(expense.id!)
+                                          : _selectedExpenseIds
+                                              .add(expense.id!);
+                                    })
+                                : null,
+                          );
+                        },
                       ),
               ),
             ],
@@ -978,265 +1010,107 @@ class _Row extends StatelessWidget {
   }
 }
 
-class _BulkApprovalSection extends StatefulWidget {
-  final List<ExpenseModel> allExpenses;
-  final Set<String> selectedIds;
-  final ValueChanged<String> onToggleExpense;
-  final VoidCallback onBulkApprove;
+class _DashboardRow extends StatelessWidget {
+  final ExpenseModel expense;
+  final FirestoreService service;
+  final bool isPending;
+  final bool selected;
+  final VoidCallback? onToggle;
 
-  const _BulkApprovalSection({
-    required this.allExpenses,
-    required this.selectedIds,
-    required this.onToggleExpense,
-    required this.onBulkApprove,
+  const _DashboardRow({
+    required this.expense,
+    required this.service,
+    required this.isPending,
+    required this.selected,
+    this.onToggle,
   });
 
-  @override
-  State<_BulkApprovalSection> createState() => _BulkApprovalSectionState();
-}
-
-class _BulkApprovalSectionState extends State<_BulkApprovalSection> {
-  bool _expanded = true;
+  void _showDetail(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _ManagerDetail(expense: expense, service: service),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    const pendingStatuses = {'pending', 'approved1'};
-    final pending = widget.allExpenses
-        .where((e) => pendingStatuses.contains(e.status))
-        .toList();
-
-    if (pending.isEmpty) return const SizedBox.shrink();
-
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFFDE68A)),
+        color: selected ? const Color(0xFFF0FDF4) : Colors.white,
+        border: Border.all(
+          color: selected
+              ? const Color(0xFF86EFAC)
+              : expense.status == 'approved'
+                  ? const Color(0xFF93C5FD)
+                  : const Color(0xFFE5E7EB),
+          width: selected || expense.status == 'approved' ? 2 : 1,
+        ),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          // 헤더
-          InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: const BoxDecoration(
-                color: Color(0xFFFEF9C3),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+          // 체크박스 (승인필요 항목만)
+          if (isPending)
+            SizedBox(
+              width: 44,
+              child: Checkbox(
+                value: selected,
+                activeColor: const Color(0xFF16A34A),
+                onChanged: (_) => onToggle?.call(),
+                visualDensity: VisualDensity.compact,
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.pending_actions, size: 18, color: Color(0xFF92400E)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '승인필요 ${pending.length}건',
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF92400E)),
-                    ),
-                  ),
-                  if (widget.selectedIds.isNotEmpty)
-                    GestureDetector(
-                      onTap: widget.onBulkApprove,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF16A34A),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '일괄승인 ${widget.selectedIds.length}건',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold),
-                        ),
+            )
+          else
+            const SizedBox(width: 12),
+          // 내용 + 상세보기
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _showDetail(context),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(expense.userName,
+                              style: const TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${expense.department} · ${expense.purpose} · ${expense.description}',
+                            style: const TextStyle(
+                                fontSize: 12, color: Color(0xFF6B7280)),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    _expanded ? Icons.expand_less : Icons.expand_more,
-                    color: const Color(0xFF92400E),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // 플랫 목록
-          if (_expanded) ...[
-            // 컬럼 헤더
-            Container(
-              color: const Color(0xFFF9FAFB),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: const Row(
-                children: [
-                  SizedBox(width: 36),
-                  Expanded(
-                    flex: 5,
-                    child: Text('이름 · 내용',
-                        style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w600)),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text('금액',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w600)),
-                  ),
-                  SizedBox(width: 52),
-                ],
-              ),
-            ),
-            // 스크롤 가능한 목록
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 280),
-              child: Scrollbar(
-                thumbVisibility: true,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: pending.length,
-                  itemBuilder: (context, i) => _ExpenseTableRow(
-                    expense: pending[i],
-                    selected: widget.selectedIds.contains(pending[i].id),
-                    onToggle: () => widget.onToggleExpense(pending[i].id!),
-                  ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(expense.formattedAmount,
+                            style: const TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        StatusBadge(expense: expense),
+                      ],
+                    ),
+                    const SizedBox(width: 4),
+                  ],
                 ),
               ),
             ),
-          ],
+          ),
         ],
       ),
-    );
-  }
-}
-
-class _ExpenseTableRow extends StatelessWidget {
-  final ExpenseModel expense;
-  final bool selected;
-  final VoidCallback onToggle;
-
-  const _ExpenseTableRow({
-    required this.expense,
-    required this.selected,
-    required this.onToggle,
-  });
-
-  void _showReceipt(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('${expense.userName} 영수증',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ReceiptImageViewer(imageUrl: expense.receiptImageUrl),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const Divider(height: 1),
-        InkWell(
-          onTap: onToggle,
-          child: Container(
-            color: selected ? const Color(0xFFF0FDF4) : null,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // 체크박스
-                SizedBox(
-                  width: 36,
-                  child: Checkbox(
-                    value: selected,
-                    activeColor: const Color(0xFF16A34A),
-                    onChanged: (_) => onToggle(),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ),
-                // 이름 + 내용 (1줄)
-                Expanded(
-                  flex: 5,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(expense.userName,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                      Text(
-                        '${expense.department} · ${expense.purpose} · ${expense.description}',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                // 금액
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    expense.formattedAmount,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // 영수증 버튼
-                SizedBox(
-                  width: 44,
-                  child: expense.receiptImageUrl.isNotEmpty
-                      ? GestureDetector(
-                          onTap: () => _showReceipt(context),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEEF2FF),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              '영수증',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  color: Color(0xFF6366F1),
-                                  fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        )
-                      : const SizedBox(),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
