@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../models/expense_model.dart';
 import '../providers/app_provider.dart';
 import '../services/firestore_service.dart';
+import '../services/storage_service.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/receipt_image_viewer.dart';
 
@@ -306,18 +308,90 @@ class _ExpenseCard extends StatelessWidget {
   }
 }
 
-class _ExpenseDetail extends StatelessWidget {
+class _ExpenseDetail extends StatefulWidget {
   final ExpenseModel expense;
   const _ExpenseDetail({required this.expense});
 
   @override
+  State<_ExpenseDetail> createState() => _ExpenseDetailState();
+}
+
+class _ExpenseDetailState extends State<_ExpenseDetail> {
+  bool _replacingReceipt = false;
+
+  Future<void> _replaceReceipt() async {
+    final picker = ImagePicker();
+    final source = await showDialog<ImageSource>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('영수증 교체'),
+        content: const Text('새 영수증 이미지를 선택해주세요'),
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.pop(context, ImageSource.camera),
+            icon: const Icon(Icons.camera_alt),
+            label: const Text('카메라'),
+          ),
+          TextButton.icon(
+            onPressed: () => Navigator.pop(context, ImageSource.gallery),
+            icon: const Icon(Icons.photo_library),
+            label: const Text('갤러리'),
+          ),
+        ],
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    final xFile = await picker.pickImage(source: source, imageQuality: 85);
+    if (xFile == null || !mounted) return;
+
+    setState(() => _replacingReceipt = true);
+    try {
+      final storageService = StorageService();
+      final firestoreService = FirestoreService();
+      final e = widget.expense;
+      final newUrl = await storageService.uploadReceipt(
+        xFile.path,
+        e.userId,
+        userName: e.userName,
+        purpose: e.purpose,
+        xFile: xFile,
+      );
+      await firestoreService.updateExpenseReceiptUrl(e.id!, newUrl);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('영수증이 교체되었습니다'),
+            backgroundColor: Color(0xFF16A34A),
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('오류: $e'), backgroundColor: Colors.red),
+        );
+        setState(() => _replacingReceipt = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    final e = widget.expense;
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.75,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      builder: (_, scrollController) => SingleChildScrollView(
+        controller: scrollController,
+        padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -340,29 +414,59 @@ class _ExpenseDetail extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(expense.formattedAmount,
+              Text(e.formattedAmount,
                   style: const TextStyle(
                       fontSize: 28, fontWeight: FontWeight.bold)),
-              StatusBadge(expense: expense),
+              StatusBadge(expense: e),
             ],
           ),
           const SizedBox(height: 16),
-          _DetailRow('부서', expense.department),
-          _DetailRow('용도', expense.purpose),
-          _DetailRow('내용', expense.description),
-          _DetailRow('신청일', expense.formattedDate),
-          if (expense.status == 'rejected' && expense.rejectedReason != null)
-            _DetailRow('반려 사유', expense.rejectedReason!,
+          _DetailRow('부서', e.department),
+          _DetailRow('용도', e.purpose),
+          _DetailRow('내용', e.description),
+          _DetailRow('신청일', e.formattedDate),
+          if (e.status == 'rejected' && e.rejectedReason != null)
+            _DetailRow('반려 사유', e.rejectedReason!,
                 valueColor: const Color(0xFFDC2626)),
           const SizedBox(height: 16),
-          if (expense.receiptImageUrl.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            const Text('영수증',
-                style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
-            const SizedBox(height: 8),
-            ReceiptImageViewer(imageUrl: expense.receiptImageUrl),
-          ],
+          const Text('영수증',
+              style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: _replacingReceipt
+                ? const Center(child: CircularProgressIndicator())
+                : ElevatedButton.icon(
+                    onPressed: _replaceReceipt,
+                    icon: const Icon(Icons.swap_horiz, size: 20),
+                    label: const Text('영수증 교체',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 12),
+          if (e.receiptImageUrl.isNotEmpty)
+            ReceiptImageViewer(imageUrl: e.receiptImageUrl)
+          else
+            Container(
+              height: 80,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: const Center(
+                child: Text('영수증 없음',
+                    style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14)),
+              ),
+            ),
         ],
+        ),
       ),
     );
   }

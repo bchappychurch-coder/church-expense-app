@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../models/expense_model.dart';
 import '../providers/app_provider.dart';
 import '../services/firestore_service.dart';
+import '../services/storage_service.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/receipt_image_viewer.dart';
 import 'department_screen.dart';
@@ -22,7 +24,7 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
   DateTime? _customFrom;
   DateTime? _customTo;
   bool _showPending = true;   // 미결건: pending, approved1
-  bool _showApproved = true;  // 승인건: approved, completed, rejected
+  bool _showApproved = false; // 승인건: approved, completed, rejected
 
   Set<String> _selectedExpenseIds = {};
 
@@ -176,6 +178,11 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
           final all = snapshot.data ?? [];
           final filtered = _filterExpenses(all);
           final filteredTotal = filtered.fold<int>(0, (sum, e) => sum + e.amount);
+          final selectedTotal = _selectedExpenseIds.isEmpty
+              ? filteredTotal
+              : filtered
+                  .where((e) => _selectedExpenseIds.contains(e.id))
+                  .fold<int>(0, (sum, e) => sum + e.amount);
 
           final pending = all.where((e) => e.status == 'pending').length;
           final inProgress = all.where((e) => e.status == 'approved1').length;
@@ -298,7 +305,7 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                     ),
                     const Spacer(),
                     _PeriodChip(
-                      label: _selectedPeriod == 3 ? _periodLabel : '직접입력',
+                      label: _selectedPeriod == 3 ? _periodLabel : '기간직접입력',
                       selected: _selectedPeriod == 3,
                       onTap: _pickCustomRange,
                       icon: Icons.calendar_today,
@@ -315,34 +322,42 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('$_periodLabel · ${filtered.length}건',
-                        style: const TextStyle(
-                            fontSize: 14, color: Color(0xFF6366F1))),
-                    if (_selectedExpenseIds.isNotEmpty)
-                      GestureDetector(
-                        onTap: () => _bulkApprove(service, user.id),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF16A34A),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            '일괄승인 ${_selectedExpenseIds.length}건',
+                    Text(
+                      _selectedExpenseIds.isEmpty
+                          ? '$_periodLabel · ${filtered.length}건'
+                          : '선택 ${_selectedExpenseIds.length}건',
+                      style: const TextStyle(
+                          fontSize: 14, color: Color(0xFF6366F1))),
+                    Row(
+                      children: [
+                        Text(_formatAmount(selectedTotal),
                             style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold),
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF4338CA))),
+                        if (_selectedExpenseIds.isNotEmpty) ...[
+                          const SizedBox(width: 10),
+                          GestureDetector(
+                            onTap: () => _bulkApprove(service, user.id),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF16A34A),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Text(
+                                '일괄승인',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
                           ),
-                        ),
-                      )
-                    else
-                      Text(_formatAmount(filteredTotal),
-                          style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF4338CA))),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -367,6 +382,7 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                           final isPending =
                               _pendingStatuses.contains(expense.status);
                           return _DashboardRow(
+                            key: ValueKey(expense.id),
                             expense: expense,
                             service: service,
                             isPending: isPending,
@@ -601,6 +617,7 @@ class _ManagerDetail extends StatefulWidget {
 class _ManagerDetailState extends State<_ManagerDetail> {
   bool _processing = false;
   bool _showRejectInput = false;
+  bool _replacingReceipt = false;
   final _rejectController = TextEditingController();
 
   @override
@@ -639,6 +656,62 @@ class _ManagerDetailState extends State<_ManagerDetail> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('대리 반려 처리되었습니다')),
       );
+    }
+  }
+
+  Future<void> _replaceReceipt() async {
+    final picker = ImagePicker();
+    final source = await showDialog<ImageSource>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('영수증 교체'),
+        content: const Text('새 영수증 이미지를 선택해주세요'),
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.pop(context, ImageSource.camera),
+            icon: const Icon(Icons.camera_alt),
+            label: const Text('카메라'),
+          ),
+          TextButton.icon(
+            onPressed: () => Navigator.pop(context, ImageSource.gallery),
+            icon: const Icon(Icons.photo_library),
+            label: const Text('갤러리'),
+          ),
+        ],
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    final xFile = await picker.pickImage(source: source, imageQuality: 85);
+    if (xFile == null || !mounted) return;
+
+    setState(() => _replacingReceipt = true);
+    try {
+      final storageService = StorageService();
+      final newUrl = await storageService.uploadReceipt(
+        xFile.path,
+        widget.expense.userId,
+        userName: widget.expense.userName,
+        purpose: widget.expense.purpose,
+        xFile: xFile,
+      );
+      await widget.service.updateExpenseReceiptUrl(widget.expense.id!, newUrl);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('영수증이 교체되었습니다'),
+            backgroundColor: Color(0xFF16A34A),
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('오류: $e'), backgroundColor: Colors.red),
+        );
+        setState(() => _replacingReceipt = false);
+      }
     }
   }
 
@@ -833,13 +906,42 @@ class _ManagerDetailState extends State<_ManagerDetail> {
           ),
 
           const SizedBox(height: 12),
-          if (e.receiptImageUrl.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            const Text('영수증',
-                style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
-            const SizedBox(height: 8),
-            ReceiptImageViewer(imageUrl: e.receiptImageUrl),
-          ],
+          const Text('영수증',
+              style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: _replacingReceipt
+                ? const Center(child: CircularProgressIndicator())
+                : ElevatedButton.icon(
+                    onPressed: _replaceReceipt,
+                    icon: const Icon(Icons.swap_horiz, size: 20),
+                    label: const Text('영수증 교체',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 12),
+          if (e.receiptImageUrl.isNotEmpty)
+            ReceiptImageViewer(imageUrl: e.receiptImageUrl)
+          else
+            Container(
+              height: 80,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: const Center(
+                child: Text('영수증 없음',
+                    style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14)),
+              ),
+            ),
           const SizedBox(height: 20),
 
           // 대리결재 버튼 (pending, approved1 상태일 때)
@@ -1018,6 +1120,7 @@ class _DashboardRow extends StatelessWidget {
   final VoidCallback? onToggle;
 
   const _DashboardRow({
+    super.key,
     required this.expense,
     required this.service,
     required this.isPending,
@@ -1036,6 +1139,7 @@ class _DashboardRow extends StatelessWidget {
   }
 
   void _showReceipt(BuildContext context) {
+    precacheImage(NetworkImage(expense.receiptImageUrl), context);
     showDialog(
       context: context,
       builder: (_) => Dialog(

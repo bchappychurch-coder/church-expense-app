@@ -329,6 +329,10 @@ class FirestoreService {
     await _db.collection('expenses').doc(expenseId).update({'amount': amount});
   }
 
+  Future<void> updateExpenseReceiptUrl(String expenseId, String url) async {
+    await _db.collection('expenses').doc(expenseId).update({'receiptImageUrl': url});
+  }
+
   Future<void> deleteExpense(String expenseId) async {
     await _db.collection('expenses').doc(expenseId).delete();
   }
