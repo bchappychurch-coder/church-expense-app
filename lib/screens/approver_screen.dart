@@ -89,7 +89,12 @@ class _ApproverScreenState extends State<ApproverScreen> {
     final user = context.read<AppProvider>().currentUser!;
     final service = FirestoreService();
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) {
+        if (!didPop) Navigator.of(context).pop();
+      },
+      child: Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: const Color(0xFF6366F1),
@@ -101,7 +106,7 @@ class _ApproverScreenState extends State<ApproverScreen> {
           IconButton(
             icon: const Icon(Icons.home, color: Colors.white),
             tooltip: '홈',
-            onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
+            onPressed: () => Navigator.of(context).pop(),
           ),
           TextButton.icon(
             onPressed: () => Navigator.push(context,
@@ -221,6 +226,7 @@ class _ApproverScreenState extends State<ApproverScreen> {
           );
         },
       ),
+    ),
     );
   }
 }
