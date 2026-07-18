@@ -15,12 +15,7 @@ class DepartmentScreen extends StatelessWidget {
     final user = context.read<AppProvider>().currentUser!;
     final service = FirestoreService();
 
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (bool didPop) {
-        if (!didPop) Navigator.of(context).pop();
-      },
-      child: Scaffold(
+    return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: const Color(0xFF6366F1),
@@ -108,7 +103,6 @@ class DepartmentScreen extends StatelessWidget {
           ],
         ),
       ),
-    ),
     );
   }
 }

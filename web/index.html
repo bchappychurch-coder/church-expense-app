@@ -43,6 +43,19 @@
   -->
   <script src="flutter_bootstrap.js" async></script>
   <script>
+    // PWA 뒤로가기로 앱이 종료되지 않도록 히스토리 버퍼 추가
+    (function() {
+      var isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                      || window.navigator.standalone === true;
+      if (isStandalone) {
+        // 앱 진입 시 더미 히스토리 엔트리를 미리 쌓아둠
+        // 다이얼로그 open/close 가 히스토리를 소비하더라도 버퍼가 남도록 5개 추가
+        for (var i = 0; i < 5; i++) {
+          window.history.pushState({ pwaBuffer: i }, '', window.location.href);
+        }
+      }
+    })();
+
     // 서비스 워커 등록
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
