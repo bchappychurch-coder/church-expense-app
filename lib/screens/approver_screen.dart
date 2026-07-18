@@ -16,9 +16,11 @@ class ApproverScreen extends StatefulWidget {
 
 class _ApproverScreenState extends State<ApproverScreen> {
   // 0=1주, 1=1개월, 2=3개월, 3=직접입력
-  int _selectedPeriod = 0;
+  int _selectedPeriod = 1;
   DateTime? _customFrom;
   DateTime? _customTo;
+  bool _showPending = true;
+  bool _showApproved = true;
 
   DateTime get _fromDate {
     if (_selectedPeriod == 3 && _customFrom != null) return _customFrom!;
@@ -67,12 +69,18 @@ class _ApproverScreenState extends State<ApproverScreen> {
     });
   }
 
-  List<ExpenseModel> _filterByPeriod(List<ExpenseModel> all) {
+  static const _pendingStatuses = {'pending', 'approved1'};
+  static const _doneStatuses = {'approved', 'completed', 'rejected'};
+
+  List<ExpenseModel> _filterExpenses(List<ExpenseModel> all) {
     final from = _fromDate;
     final to = _toDate.add(const Duration(days: 1));
     return all.where((e) {
       final dt = e.createdAt.toDate();
-      return dt.isAfter(from) && dt.isBefore(to);
+      if (!dt.isAfter(from) || !dt.isBefore(to)) return false;
+      if (_showPending && _pendingStatuses.contains(e.status)) return true;
+      if (_showApproved && _doneStatuses.contains(e.status)) return true;
+      return false;
     }).toList();
   }
 
@@ -114,110 +122,137 @@ class _ApproverScreenState extends State<ApproverScreen> {
       ),
       body: StreamBuilder<List<ExpenseModel>>(
         stream: service.getAllExpensesForApprover(),
-        builder: (context, allSnapshot) {
-          final allExpenses = allSnapshot.data ?? [];
-          final periodExpenses = _filterByPeriod(allExpenses);
-          final periodTotal = periodExpenses.fold<int>(0, (sum, e) => sum + e.amount);
-
-          return StreamBuilder<List<ExpenseModel>>(
-            stream: service.getPendingExpenses(),
-            builder: (context, pendingSnapshot) {
-          if (pendingSnapshot.connectionState == ConnectionState.waiting &&
-              !pendingSnapshot.hasData) {
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final pending = pendingSnapshot.data ?? [];
+          final all = snapshot.data ?? [];
+          final filtered = _filterExpenses(all);
+          final pendingAll = all.where((e) => _pendingStatuses.contains(e.status)).toList();
+          final total = filtered.fold<int>(0, (sum, e) => sum + e.amount);
 
           return Column(
-                children: [
-                  // 기간 선택 칩
-                  Container(
-                    color: const Color(0xFFF9FAFB),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    child: Row(
-                      children: [
-                        _PeriodChip(label: '1주', selected: _selectedPeriod == 0,
-                            onTap: () => setState(() => _selectedPeriod = 0)),
-                        const SizedBox(width: 8),
-                        _PeriodChip(label: '1개월', selected: _selectedPeriod == 1,
-                            onTap: () => setState(() => _selectedPeriod = 1)),
-                        const SizedBox(width: 8),
-                        _PeriodChip(label: '3개월', selected: _selectedPeriod == 2,
-                            onTap: () => setState(() => _selectedPeriod = 2)),
-                        const SizedBox(width: 8),
-                        _PeriodChip(
-                          label: _selectedPeriod == 3 ? _periodLabel : '직접입력',
-                          selected: _selectedPeriod == 3,
-                          onTap: _pickCustomRange,
-                          icon: Icons.calendar_today,
+            children: [
+              // 필터 체크박스 행
+              Container(
+                color: const Color(0xFFF9FAFB),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    _CheckChip(
+                      label: '미결건',
+                      checked: _showPending,
+                      color: const Color(0xFFF59E0B),
+                      onChanged: (v) => setState(() => _showPending = v),
+                    ),
+                    const SizedBox(width: 10),
+                    _CheckChip(
+                      label: '승인건',
+                      checked: _showApproved,
+                      color: const Color(0xFF16A34A),
+                      onChanged: (v) => setState(() => _showApproved = v),
+                    ),
+                    if (pendingAll.isNotEmpty) ...[
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF9C3),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ],
-                    ),
-                  ),
-                  // 기간 합산 배너
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                    color: const Color(0xFFEEF2FF),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('$_periodLabel · ${periodExpenses.length}건',
-                            style: const TextStyle(
-                                fontSize: 14, color: Color(0xFF6366F1))),
-                        Text(_formatAmount(periodTotal),
-                            style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF4338CA))),
-                      ],
-                    ),
-                  ),
-                  // 승인 대기 배너
-                  if (pending.isNotEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 12),
-                      color: const Color(0xFFFEF9C3),
-                      child: Text(
-                        '승인 대기 ${pending.length}건',
-                        style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF92400E)),
+                        child: Text(
+                          '대기 ${pendingAll.length}건',
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF92400E)),
+                        ),
                       ),
+                    ],
+                  ],
+                ),
+              ),
+              // 기간 선택 칩
+              Container(
+                color: const Color(0xFFF9FAFB),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                child: Row(
+                  children: [
+                    _PeriodChip(label: '1주', selected: _selectedPeriod == 0,
+                        onTap: () => setState(() => _selectedPeriod = 0)),
+                    const SizedBox(width: 8),
+                    _PeriodChip(label: '1개월', selected: _selectedPeriod == 1,
+                        onTap: () => setState(() => _selectedPeriod = 1)),
+                    const SizedBox(width: 8),
+                    _PeriodChip(label: '3개월', selected: _selectedPeriod == 2,
+                        onTap: () => setState(() => _selectedPeriod = 2)),
+                    const SizedBox(width: 8),
+                    _PeriodChip(
+                      label: _selectedPeriod == 3 ? _periodLabel : '직접입력',
+                      selected: _selectedPeriod == 3,
+                      onTap: _pickCustomRange,
+                      icon: Icons.calendar_today,
                     ),
-                  // 목록
-                  Expanded(
-                    child: pending.isEmpty
-                        ? const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.check_circle_outline,
-                                    size: 64, color: Color(0xFF16A34A)),
-                                SizedBox(height: 16),
-                                Text('처리할 결재가 없습니다',
-                                    style: TextStyle(
-                                        fontSize: 20, color: Color(0xFF6B7280))),
-                              ],
+                  ],
+                ),
+              ),
+              // 합산 배너
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                color: const Color(0xFFEEF2FF),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('$_periodLabel · ${filtered.length}건',
+                        style: const TextStyle(
+                            fontSize: 14, color: Color(0xFF6366F1))),
+                    Text(_formatAmount(total),
+                        style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF4338CA))),
+                  ],
+                ),
+              ),
+              // 목록
+              Expanded(
+                child: filtered.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              (!_showPending && !_showApproved)
+                                  ? Icons.filter_list_off
+                                  : Icons.check_circle_outline,
+                              size: 64,
+                              color: const Color(0xFF16A34A),
                             ),
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: pending.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 10),
-                            itemBuilder: (context, i) => _ApprovalCard(
-                              expense: pending[i],
-                              approverId: user.id,
-                              service: service,
+                            const SizedBox(height: 16),
+                            Text(
+                              (!_showPending && !_showApproved)
+                                  ? '필터를 선택해 주세요'
+                                  : '해당 기간에 내역이 없습니다',
+                              style: const TextStyle(
+                                  fontSize: 20, color: Color(0xFF6B7280)),
                             ),
-                          ),
-                  ),
-                ],
-              );
-            },
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, i) => _ApprovalCard(
+                          expense: filtered[i],
+                          approverId: user.id,
+                          service: service,
+                        ),
+                      ),
+              ),
+            ],
           );
         },
       ),
@@ -263,6 +298,54 @@ class _PeriodChip extends StatelessWidget {
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: selected ? Colors.white : const Color(0xFF6B7280))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CheckChip extends StatelessWidget {
+  final String label;
+  final bool checked;
+  final Color color;
+  final ValueChanged<bool> onChanged;
+
+  const _CheckChip({
+    required this.label,
+    required this.checked,
+    required this.color,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onChanged(!checked),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: checked ? color.withOpacity(0.12) : Colors.white,
+          border: Border.all(color: checked ? color : const Color(0xFFD1D5DB)),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              checked ? Icons.check_box : Icons.check_box_outline_blank,
+              size: 16,
+              color: checked ? color : const Color(0xFF9CA3AF),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: checked ? color : const Color(0xFF6B7280),
+              ),
+            ),
           ],
         ),
       ),
@@ -476,7 +559,7 @@ class _ApprovalDetailState extends State<_ApprovalDetail> {
             ReceiptImageViewer(imageUrl: e.receiptImageUrl),
           ],
           const SizedBox(height: 20),
-          if (!_processing) ...[
+          if (!_processing && {'pending', 'approved1'}.contains(e.status)) ...[
             Row(
               children: [
                 Expanded(
