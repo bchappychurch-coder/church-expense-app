@@ -11,7 +11,8 @@ class StorageService {
     final date = '${now.year}${now.month.toString().padLeft(2,'0')}${now.day.toString().padLeft(2,'0')}';
     final safeName = userName.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '');
     final safePurpose = purpose.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '');
-    final fileName = '${safeName}_${date}_$safePurpose.jpg';
+    final ts = now.millisecondsSinceEpoch;
+    final fileName = '${safeName}_${date}_${ts}_$safePurpose.jpg';
     final ref = _storage.ref().child('receipts/$fileName');
 
     UploadTask uploadTask;
