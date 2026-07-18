@@ -627,7 +627,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.pop(context);
                   Navigator.push(context,
                       MaterialPageRoute(
-                          builder: (_) => const DepartmentScreen()));
+                          builder: (_) => const DepartmentScreen()))
+                  .then((_) {
+                    if (mounted) _showRoleDialog(user);
+                  });
                 },
               ),
               const SizedBox(height: 10),
@@ -645,7 +648,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.pop(context);
                   Navigator.push(context,
                       MaterialPageRoute(
-                          builder: (_) => const MyHistoryScreen()));
+                          builder: (_) => const MyHistoryScreen()))
+                  .then((_) {
+                    if (mounted) _showRoleDialog(user);
+                  });
                 },
               ),
               if (user.isManager || user.isApprover) ...[
@@ -668,11 +674,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       if (user.isManager) {
                         Navigator.push(context,
                             MaterialPageRoute(
-                                builder: (_) => const ManagerDashboard()));
+                                builder: (_) => const ManagerDashboard()))
+                        .then((_) {
+                          if (mounted) _showRoleDialog(user);
+                        });
                       } else {
                         Navigator.push(context,
                             MaterialPageRoute(
-                                builder: (_) => const ApproverScreen()));
+                                builder: (_) => const ApproverScreen()))
+                        .then((_) {
+                          if (mounted) _showRoleDialog(user);
+                        });
                       }
                     });
                   },
