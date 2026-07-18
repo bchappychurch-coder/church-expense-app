@@ -1091,11 +1091,22 @@ class _BulkApprovalSectionState extends State<_BulkApprovalSection> {
                 ],
               ),
             ),
-            ...pending.map((expense) => _ExpenseTableRow(
-              expense: expense,
-              selected: widget.selectedIds.contains(expense.id),
-              onToggle: () => widget.onToggleExpense(expense.id!),
-            )),
+            // 스크롤 가능한 목록
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 280),
+              child: Scrollbar(
+                thumbVisibility: true,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: pending.length,
+                  itemBuilder: (context, i) => _ExpenseTableRow(
+                    expense: pending[i],
+                    selected: widget.selectedIds.contains(pending[i].id),
+                    onToggle: () => widget.onToggleExpense(pending[i].id!),
+                  ),
+                ),
+              ),
+            ),
           ],
         ],
       ),
