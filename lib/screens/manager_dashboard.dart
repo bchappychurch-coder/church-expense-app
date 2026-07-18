@@ -279,17 +279,6 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                       ? _selectedExpenseIds.remove(id)
                       : _selectedExpenseIds.add(id);
                 }),
-                onToggleUser: (userExpenses) {
-                  final ids = userExpenses.map((e) => e.id!).toSet();
-                  final allSelected = ids.every((id) => _selectedExpenseIds.contains(id));
-                  setState(() {
-                    if (allSelected) {
-                      _selectedExpenseIds.removeAll(ids);
-                    } else {
-                      _selectedExpenseIds.addAll(ids);
-                    }
-                  });
-                },
                 onBulkApprove: () => _bulkApprove(service, user.id),
               ),
 
@@ -993,14 +982,12 @@ class _BulkApprovalSection extends StatefulWidget {
   final List<ExpenseModel> allExpenses;
   final Set<String> selectedIds;
   final ValueChanged<String> onToggleExpense;
-  final ValueChanged<List<ExpenseModel>> onToggleUser;
   final VoidCallback onBulkApprove;
 
   const _BulkApprovalSection({
     required this.allExpenses,
     required this.selectedIds,
     required this.onToggleExpense,
-    required this.onToggleUser,
     required this.onBulkApprove,
   });
 
@@ -1019,12 +1006,6 @@ class _BulkApprovalSectionState extends State<_BulkApprovalSection> {
         .toList();
 
     if (pending.isEmpty) return const SizedBox.shrink();
-
-    // Group by userName
-    final Map<String, List<ExpenseModel>> byUser = {};
-    for (final e in pending) {
-      byUser.putIfAbsent(e.userName, () => []).add(e);
-    }
 
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 4, 12, 0),
@@ -1052,7 +1033,7 @@ class _BulkApprovalSectionState extends State<_BulkApprovalSection> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '일괄결재 — 미결 ${pending.length}건 / ${byUser.length}명',
+                      '승인필요 ${pending.length}건',
                       style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -1069,7 +1050,7 @@ class _BulkApprovalSectionState extends State<_BulkApprovalSection> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          '승인 ${widget.selectedIds.length}건',
+                          '일괄승인 ${widget.selectedIds.length}건',
                           style: const TextStyle(
                               color: Colors.white,
                               fontSize: 13,
@@ -1086,112 +1067,38 @@ class _BulkApprovalSectionState extends State<_BulkApprovalSection> {
               ),
             ),
           ),
-          // 사람별 목록
-          if (_expanded)
-            ...byUser.entries.map((entry) => _UserBlock(
-              userName: entry.key,
-              expenses: entry.value,
-              selectedIds: widget.selectedIds,
-              onToggleExpense: widget.onToggleExpense,
-              onToggleUser: () => widget.onToggleUser(entry.value),
+          // 플랫 목록
+          if (_expanded) ...[
+            // 컬럼 헤더
+            Container(
+              color: const Color(0xFFF9FAFB),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: const Row(
+                children: [
+                  SizedBox(width: 36),
+                  Expanded(
+                    flex: 5,
+                    child: Text('이름 · 내용',
+                        style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w600)),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text('금액',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w600)),
+                  ),
+                  SizedBox(width: 52),
+                ],
+              ),
+            ),
+            ...pending.map((expense) => _ExpenseTableRow(
+              expense: expense,
+              selected: widget.selectedIds.contains(expense.id),
+              onToggle: () => widget.onToggleExpense(expense.id!),
             )),
+          ],
         ],
       ),
-    );
-  }
-}
-
-class _UserBlock extends StatefulWidget {
-  final String userName;
-  final List<ExpenseModel> expenses;
-  final Set<String> selectedIds;
-  final ValueChanged<String> onToggleExpense;
-  final VoidCallback onToggleUser;
-
-  const _UserBlock({
-    required this.userName,
-    required this.expenses,
-    required this.selectedIds,
-    required this.onToggleExpense,
-    required this.onToggleUser,
-  });
-
-  @override
-  State<_UserBlock> createState() => _UserBlockState();
-}
-
-class _UserBlockState extends State<_UserBlock> {
-  bool _expanded = true;
-
-  @override
-  Widget build(BuildContext context) {
-    final ids = widget.expenses.map((e) => e.id!).toSet();
-    final allSelected = ids.isNotEmpty && ids.every((id) => widget.selectedIds.contains(id));
-    final someSelected = ids.any((id) => widget.selectedIds.contains(id));
-    final total = widget.expenses.fold<int>(0, (s, e) => s + e.amount);
-    final totalStr = total.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
-
-    return Column(
-      children: [
-        const Divider(height: 1),
-        // 사람 헤더 행
-        InkWell(
-          onTap: () => setState(() => _expanded = !_expanded),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            child: Row(
-              children: [
-                Checkbox(
-                  value: allSelected ? true : (someSelected ? null : false),
-                  tristate: true,
-                  activeColor: const Color(0xFF6366F1),
-                  onChanged: (_) => widget.onToggleUser(),
-                ),
-                Expanded(
-                  child: Text(widget.userName,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                ),
-                Text('${widget.expenses.length}건 · $totalStr원',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-                const SizedBox(width: 4),
-                Icon(_expanded ? Icons.expand_less : Icons.expand_more,
-                    size: 18, color: const Color(0xFF9CA3AF)),
-              ],
-            ),
-          ),
-        ),
-        // 지출 테이블
-        if (_expanded) ...[
-          // 테이블 헤더
-          Container(
-            color: const Color(0xFFF9FAFB),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: Row(
-              children: [
-                const SizedBox(width: 36),
-                const Expanded(
-                  flex: 3,
-                  child: Text('내용',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w600)),
-                ),
-                const Expanded(
-                  flex: 2,
-                  child: Text('금액',
-                      textAlign: TextAlign.right,
-                      style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w600)),
-                ),
-                const SizedBox(width: 36),
-              ],
-            ),
-          ),
-          ...widget.expenses.map((expense) => _ExpenseTableRow(
-            expense: expense,
-            selected: widget.selectedIds.contains(expense.id),
-            onToggle: () => widget.onToggleExpense(expense.id!),
-          )),
-        ],
-      ],
     );
   }
 }
@@ -1241,60 +1148,84 @@ class _ExpenseTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onToggle,
-      child: Container(
-        color: selected ? const Color(0xFFF0FDF4) : null,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 36,
-              child: Checkbox(
-                value: selected,
-                activeColor: const Color(0xFF16A34A),
-                onChanged: (_) => onToggle(),
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
-            Expanded(
-              flex: 3,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${expense.department} · ${expense.purpose}',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
-                  Text(expense.description,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                ],
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                expense.formattedAmount,
-                textAlign: TextAlign.right,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-              ),
-            ),
-            SizedBox(
-              width: 36,
-              child: expense.receiptImageUrl.isNotEmpty
-                  ? GestureDetector(
-                      onTap: () => _showReceipt(context),
-                      child: const Padding(
-                        padding: EdgeInsets.only(left: 6, top: 2),
-                        child: Icon(Icons.receipt_long,
-                            size: 20, color: Color(0xFF6366F1)),
+    return Column(
+      children: [
+        const Divider(height: 1),
+        InkWell(
+          onTap: onToggle,
+          child: Container(
+            color: selected ? const Color(0xFFF0FDF4) : null,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // 체크박스
+                SizedBox(
+                  width: 36,
+                  child: Checkbox(
+                    value: selected,
+                    activeColor: const Color(0xFF16A34A),
+                    onChanged: (_) => onToggle(),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+                // 이름 + 내용 (1줄)
+                Expanded(
+                  flex: 5,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(expense.userName,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      Text(
+                        '${expense.department} · ${expense.purpose} · ${expense.description}',
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    )
-                  : const SizedBox(),
+                    ],
+                  ),
+                ),
+                // 금액
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    expense.formattedAmount,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // 영수증 버튼
+                SizedBox(
+                  width: 44,
+                  child: expense.receiptImageUrl.isNotEmpty
+                      ? GestureDetector(
+                          onTap: () => _showReceipt(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEEF2FF),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              '영수증',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  color: Color(0xFF6366F1),
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        )
+                      : const SizedBox(),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
