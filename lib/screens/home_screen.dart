@@ -625,6 +625,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 onPressed: () {
                   Navigator.pop(context);
+                  html.window.history.pushState(null, '', html.window.location.href);
                   Navigator.push(context,
                       MaterialPageRoute(
                           builder: (_) => const DepartmentScreen()))
@@ -646,6 +647,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 onPressed: () {
                   Navigator.pop(context);
+                  html.window.history.pushState(null, '', html.window.location.href);
                   Navigator.push(context,
                       MaterialPageRoute(
                           builder: (_) => const MyHistoryScreen()))
@@ -671,6 +673,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: () {
                     Navigator.pop(context);
                     showPasswordGate(context, () {
+                      html.window.history.pushState(null, '', html.window.location.href);
                       if (user.isManager) {
                         Navigator.push(context,
                             MaterialPageRoute(
