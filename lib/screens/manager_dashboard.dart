@@ -31,12 +31,7 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
 
   DateTime get _fromDate {
     if (_selectedPeriod == 3 && _customFrom != null) return _customFrom!;
-    final now = DateTime.now();
-    switch (_selectedPeriod) {
-      case 1: return now.subtract(const Duration(days: 30));
-      case 2: return now.subtract(const Duration(days: 90));
-      default: return now.subtract(const Duration(days: 7));
-    }
+    return DateTime.now().subtract(const Duration(days: 30));
   }
 
   DateTime get _toDate {
@@ -48,7 +43,7 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
     if (_selectedPeriod == 3 && _customFrom != null && _customTo != null) {
       return '${_customFrom!.month}/${_customFrom!.day} ~ ${_customTo!.month}/${_customTo!.day}';
     }
-    return ['최근 1주', '최근 1개월', '최근 3개월', '직접입력'][_selectedPeriod];
+    return '최근 1개월';
   }
 
   Future<void> _pickCustomRange() async {
@@ -298,7 +293,7 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                 onBulkApprove: () => _bulkApprove(service, user.id),
               ),
 
-              // 필터 체크박스 행
+              // 필터 행 (미결건·승인건 체크박스 + 직접입력)
               Container(
                 color: const Color(0xFFF9FAFB),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -317,25 +312,7 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                       color: const Color(0xFF16A34A),
                       onChanged: (v) => setState(() => _showApproved = v),
                     ),
-                  ],
-                ),
-              ),
-
-              // 기간 선택 칩
-              Container(
-                color: const Color(0xFFF9FAFB),
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                child: Row(
-                  children: [
-                    _PeriodChip(label: '1주', selected: _selectedPeriod == 0,
-                        onTap: () => setState(() => _selectedPeriod = 0)),
-                    const SizedBox(width: 8),
-                    _PeriodChip(label: '1개월', selected: _selectedPeriod == 1,
-                        onTap: () => setState(() => _selectedPeriod = 1)),
-                    const SizedBox(width: 8),
-                    _PeriodChip(label: '3개월', selected: _selectedPeriod == 2,
-                        onTap: () => setState(() => _selectedPeriod = 2)),
-                    const SizedBox(width: 8),
+                    const Spacer(),
                     _PeriodChip(
                       label: _selectedPeriod == 3 ? _periodLabel : '직접입력',
                       selected: _selectedPeriod == 3,
