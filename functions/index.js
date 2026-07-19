@@ -1,4 +1,5 @@
 const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require('firebase-functions/v2/firestore');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
@@ -111,6 +112,67 @@ exports.onPinResetRequested = onDocumentWritten('pinResetRequests/{userId}', asy
       webpush: { headers: { Urgency: 'high' } },
     });
     console.log('PIN 초기화 알림 전송 완료:', request.userName);
+  } catch (e) {
+    console.error('FCM 전송 실패:', e);
+  }
+});
+
+// 매주일 오전 8시 5분 → 승인자들에게 미결재 건수 알림
+exports.weeklyApprovalReminder = onSchedule({
+  schedule: '5 8 * * 0',   // 매주 일요일 08:05 (Asia/Seoul 기준)
+  timeZone: 'Asia/Seoul',
+}, async (_event) => {
+  // 미결재 건수 조회 (pending + approved1)
+  const [pendingSnap, approved1Snap] = await Promise.all([
+    db.collection('expenses').where('status', '==', 'pending').get(),
+    db.collection('expenses').where('status', '==', 'approved1').get(),
+  ]);
+  const pendingCount = pendingSnap.size + approved1Snap.size;
+
+  // 승인자 FCM 토큰 수집
+  const approversSnap = await db.collection('users')
+    .where('role', '==', 'approver').get();
+
+  const tokens = approversSnap.docs
+    .map(doc => doc.data()?.fcmToken)
+    .filter(Boolean);
+
+  if (tokens.length === 0) {
+    console.log('승인자 FCM 토큰 없음');
+    return;
+  }
+
+  const body = pendingCount > 0
+    ? `미결재 ${pendingCount}건이 있습니다. 지금 바로 확인해 주세요!`
+    : '이번 주 미결재 건이 없습니다. 앱을 확인해 주세요.';
+
+  try {
+    const result = await getMessaging().sendEachForMulticast({
+      tokens,
+      notification: {
+        title: '⛪ 주일 결재 알림',
+        body,
+      },
+      android: { priority: 'high' },
+      webpush: { headers: { Urgency: 'high' } },
+    });
+    console.log(`주일 결재 알림 전송: 성공 ${result.successCount}, 실패 ${result.failureCount}, 미결재 ${pendingCount}건`);
+
+    // 담당자에게도 알림 전송
+    const managerSnap = await db.collection('users')
+      .where('role', '==', 'manager').limit(1).get();
+    const managerToken = managerSnap.docs[0]?.data()?.fcmToken;
+    if (managerToken) {
+      await getMessaging().send({
+        token: managerToken,
+        notification: {
+          title: '✅ 주일 결재 알림 발송 완료',
+          body: `승인자에게 푸시 메세지 보냈습니다 (${result.successCount}명 전송 완료)`,
+        },
+        android: { priority: 'high' },
+        webpush: { headers: { Urgency: 'high' } },
+      });
+    }
   } catch (e) {
     console.error('FCM 전송 실패:', e);
   }
