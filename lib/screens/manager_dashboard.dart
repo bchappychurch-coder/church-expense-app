@@ -9,6 +9,7 @@ import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/receipt_image_viewer.dart';
+import '../utils/print_utils.dart';
 import 'department_screen.dart';
 
 class ManagerDashboard extends StatefulWidget {
@@ -101,6 +102,84 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => const _DepartmentSettings(),
     );
+  }
+
+  void _printSelected(List<ExpenseModel> filtered) {
+    final selected = _selectedExpenseIds.isEmpty
+        ? filtered
+        : filtered.where((e) => _selectedExpenseIds.contains(e.id)).toList();
+    if (selected.isEmpty) return;
+
+    final total = selected.fold<int>(0, (sum, e) => sum + e.amount);
+    final now = DateTime.now();
+    final dateStr = '${now.year}.${now.month.toString().padLeft(2,'0')}.${now.day.toString().padLeft(2,'0')}';
+
+    final rows = selected.asMap().entries.map((entry) {
+      final i = entry.key + 1;
+      final e = entry.value;
+      final dt = e.createdAt.toDate();
+      final d = '${dt.month}/${dt.day}';
+      return '''
+        <tr>
+          <td style="text-align:center">$i</td>
+          <td style="text-align:center">$d</td>
+          <td>${e.userName}</td>
+          <td>${e.department}</td>
+          <td>${e.purpose} / ${e.description}</td>
+          <td style="text-align:right">${e.formattedAmount}</td>
+          <td>${e.bankName} ${e.bankAccount}</td>
+        </tr>''';
+    }).join();
+
+    final formattedTotal = total.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+
+    final html = '''<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>지출 결재 내역</title>
+  <style>
+    body { font-family: "Malgun Gothic", sans-serif; padding: 24px; font-size: 13px; }
+    h2 { text-align: center; margin-bottom: 4px; font-size: 18px; }
+    .sub { text-align: center; color: #666; margin-bottom: 16px; font-size: 12px; }
+    table { border-collapse: collapse; width: 100%; }
+    th { background: #6366F1; color: white; padding: 8px 6px; }
+    td { border: 1px solid #ddd; padding: 7px 6px; }
+    thead tr th { border: 1px solid #5254cc; }
+    tfoot td { font-weight: bold; background: #f5f5f5; }
+    @media print { body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <h2>지출 결재 내역</h2>
+  <p class="sub">출력일: $dateStr &nbsp;|&nbsp; 총 ${selected.length}건</p>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:32px">No</th>
+        <th style="width:48px">날짜</th>
+        <th style="width:60px">신청자</th>
+        <th style="width:72px">부서</th>
+        <th>용도 / 내용</th>
+        <th style="width:90px">금액</th>
+        <th style="width:160px">계좌</th>
+      </tr>
+    </thead>
+    <tbody>$rows</tbody>
+    <tfoot>
+      <tr>
+        <td colspan="5" style="text-align:right">합 계</td>
+        <td style="text-align:right">$formattedTotal원</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  <script>window.onload = function() { window.print(); };</script>
+</body>
+</html>''';
+
+    printExpensesHtml(html);
   }
 
   Future<void> _bulkApprove(FirestoreService service, String approverId) async {
@@ -335,8 +414,36 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF4338CA))),
-                        if (_selectedExpenseIds.isNotEmpty) ...[
+                        if (filtered.isNotEmpty) ...[
                           const SizedBox(width: 10),
+                          GestureDetector(
+                            onTap: () => _printSelected(filtered),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6366F1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.print, color: Colors.white, size: 14),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _selectedExpenseIds.isEmpty ? '전체인쇄' : '선택인쇄',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (_selectedExpenseIds.isNotEmpty) ...[
+                          const SizedBox(width: 8),
                           GestureDetector(
                             onTap: () => _bulkApprove(service, user.id),
                             child: Container(
