@@ -122,7 +122,9 @@ class _ApproverScreenState extends State<ApproverScreen> {
   }
 
   void _printSelected(List<ExpenseModel> filtered) {
-    final selected = filtered.where((e) => _selectedExpenseIds.contains(e.id)).toList();
+    final selected = _selectedExpenseIds.isEmpty
+        ? filtered
+        : filtered.where((e) => _selectedExpenseIds.contains(e.id)).toList();
     if (selected.isEmpty) return;
 
     final total = selected.fold<int>(0, (sum, e) => sum + e.amount);
@@ -324,7 +326,7 @@ class _ApproverScreenState extends State<ApproverScreen> {
                 ),
               ),
 
-              // 합산 + 일괄승인 배너
+              // 합산 + 인쇄/일괄승인 배너
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -345,7 +347,7 @@ class _ApproverScreenState extends State<ApproverScreen> {
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF4338CA))),
-                        if (_selectedExpenseIds.isNotEmpty) ...[
+                        if (filtered.isNotEmpty) ...[
                           const SizedBox(width: 10),
                           GestureDetector(
                             onTap: () => _printSelected(filtered),
@@ -356,20 +358,24 @@ class _ApproverScreenState extends State<ApproverScreen> {
                                 color: const Color(0xFF6366F1),
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.print, color: Colors.white, size: 14),
-                                  SizedBox(width: 4),
-                                  Text('인쇄',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold)),
+                                  const Icon(Icons.print, color: Colors.white, size: 14),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _selectedExpenseIds.isEmpty ? '전체인쇄' : '선택인쇄',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold),
+                                  ),
                                 ],
                               ),
                             ),
                           ),
+                        ],
+                        if (_selectedExpenseIds.isNotEmpty) ...[
                           const SizedBox(width: 8),
                           GestureDetector(
                             onTap: () => _bulkApprove(service, user.id),
