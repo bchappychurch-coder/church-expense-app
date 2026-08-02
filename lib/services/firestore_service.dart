@@ -275,30 +275,35 @@ class FirestoreService {
   // ── 승인 처리 ────────────────────────────────────────
 
   Future<bool> approveExpense(String expenseId, String approverId) async {
-    final expense = await getExpense(expenseId);
-    if (expense == null) return false;
+    final docRef = _db.collection('expenses').doc(expenseId);
 
-    final Map<String, dynamic> updates = {};
+    return _db.runTransaction<bool>((transaction) async {
+      final snapshot = await transaction.get(docRef);
+      if (!snapshot.exists) return false;
 
-    if (expense.approver1Id == approverId) {
-      updates['approver1ApprovedAt'] = Timestamp.now();
-    } else if (expense.approver2Id == approverId) {
-      updates['approver2ApprovedAt'] = Timestamp.now();
-    }
+      final expense = ExpenseModel.fromFirestore(snapshot);
+      final Map<String, dynamic> updates = {};
 
-    // 상대방이 이미 승인했는지 확인
-    final bool otherAlreadyApproved = expense.approver1Id == approverId
-        ? expense.approver2ApprovedAt != null
-        : expense.approver1ApprovedAt != null;
+      if (expense.approver1Id == approverId) {
+        updates['approver1ApprovedAt'] = Timestamp.now();
+      } else if (expense.approver2Id == approverId) {
+        updates['approver2ApprovedAt'] = Timestamp.now();
+      }
 
-    if (otherAlreadyApproved) {
-      updates['status'] = 'approved'; // 두 명 모두 승인 완료
-    } else {
-      updates['status'] = 'approved1'; // 1명 승인 완료
-    }
+      // 트랜잭션 내에서 최신 데이터로 상대방 승인 여부 확인
+      final bool otherAlreadyApproved = expense.approver1Id == approverId
+          ? expense.approver2ApprovedAt != null
+          : expense.approver1ApprovedAt != null;
 
-    await _db.collection('expenses').doc(expenseId).update(updates);
-    return otherAlreadyApproved; // true면 담당자에게 알림 필요
+      if (otherAlreadyApproved) {
+        updates['status'] = 'approved'; // 두 명 모두 승인 완료
+      } else {
+        updates['status'] = 'approved1'; // 1명 승인 완료
+      }
+
+      transaction.update(docRef, updates);
+      return otherAlreadyApproved; // true면 담당자에게 알림 필요
+    });
   }
 
   // 담당자 대리결재

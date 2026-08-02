@@ -57,12 +57,15 @@ class _PurposeScreenState extends State<PurposeScreen> {
       final user = context.read<AppProvider>().currentUser!;
       final department = context.read<AppProvider>().selectedDepartment!;
 
-      // 1. 영수증 사진 업로드
-      final imageUrl = await _storageService.uploadReceipt(
-          widget.receiptImagePath, user.id,
-          userName: user.name,
-          purpose: _descController.text.trim(),
-          xFile: widget.xFile);
+      // 1. 영수증 사진 업로드 (있는 경우에만)
+      String imageUrl = '';
+      if (widget.receiptImagePath.isNotEmpty || widget.xFile != null) {
+        imageUrl = await _storageService.uploadReceipt(
+            widget.receiptImagePath, user.id,
+            userName: user.name,
+            purpose: _descController.text.trim(),
+            xFile: widget.xFile);
+      }
 
       // 2. Firestore에 지출 저장
       await _firestoreService.createExpense(ExpenseModel(
