@@ -337,7 +337,7 @@ class _ApproverScreenState extends State<ApproverScreen> {
                     Text(
                       _selectedExpenseIds.isEmpty
                           ? '$_periodLabel · ${filtered.length}건'
-                          : '선택 ${_selectedExpenseIds.length}건',
+                          : '선택 ${_selectedExpenseIds.length}건  ${_formatAmount(selectedTotal)}',
                       style: const TextStyle(
                           fontSize: 14, color: Color(0xFF6366F1))),
                     Row(
