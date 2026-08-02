@@ -427,13 +427,11 @@ class _ApproverScreenState extends State<ApproverScreen> {
                             service: service,
                             isPending: isPending,
                             selected: _selectedExpenseIds.contains(expense.id),
-                            onToggle: isPending
-                                ? () => setState(() {
-                                      _selectedExpenseIds.contains(expense.id!)
-                                          ? _selectedExpenseIds.remove(expense.id!)
-                                          : _selectedExpenseIds.add(expense.id!);
-                                    })
-                                : null,
+                            onToggle: () => setState(() {
+                                  _selectedExpenseIds.contains(expense.id!)
+                                      ? _selectedExpenseIds.remove(expense.id!)
+                                      : _selectedExpenseIds.add(expense.id!);
+                                }),
                           );
                         },
                       ),
@@ -656,20 +654,17 @@ class _ApprovalRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // 체크박스 (승인필요 항목만)
-          if (isPending)
-            SizedBox(
-              width: 36,
-              child: Checkbox(
-                value: selected,
-                activeColor: const Color(0xFF16A34A),
-                onChanged: (_) => onToggle?.call(),
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            )
-          else
-            const SizedBox(width: 10),
+          // 체크박스 (전체 항목)
+          SizedBox(
+            width: 36,
+            child: Checkbox(
+              value: selected,
+              activeColor: const Color(0xFF16A34A),
+              onChanged: (_) => onToggle?.call(),
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
           // 내용 (탭 → 상세)
           Expanded(
             child: GestureDetector(
