@@ -9,14 +9,14 @@ class StorageService {
   Future<String> uploadReceipt(String localPath, String userId, {String userName = '', String purpose = '', XFile? xFile}) async {
     final now = DateTime.now();
     final date = '${now.year}${now.month.toString().padLeft(2,'0')}${now.day.toString().padLeft(2,'0')}';
-    final safeName = userName.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '');
-    final safePurpose = purpose.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '');
+    final safeName = userName.replaceAll(RegExp(r'[/\\?%*:|"<>\n\r\t]'), '').trim();
+    final safePurpose = purpose.replaceAll(RegExp(r'[/\\?%*:|"<>\n\r\t]'), ' ').replaceAll(RegExp(r'\s+'), '_').trim();
     final ts = now.millisecondsSinceEpoch;
     final fileName = '${safeName}_${date}_${ts}_$safePurpose.jpg';
     final ref = _storage.ref().child('receipts/$fileName');
 
     UploadTask uploadTask;
-    if (kIsWeb && xFile != null) {
+    if (xFile != null) {
       final bytes = await xFile.readAsBytes();
       uploadTask = ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
     } else {
