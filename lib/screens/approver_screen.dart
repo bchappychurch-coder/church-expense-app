@@ -326,7 +326,7 @@ class _ApproverScreenState extends State<ApproverScreen> {
                 ),
               ),
 
-              // 합산 + 인쇄/일괄승인 배너
+              // 합산 + 선택승인 배너
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -347,36 +347,8 @@ class _ApproverScreenState extends State<ApproverScreen> {
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF4338CA))),
-                        if (filtered.isNotEmpty) ...[
-                          const SizedBox(width: 10),
-                          GestureDetector(
-                            onTap: () => _printSelected(filtered),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF6366F1),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.print, color: Colors.white, size: 14),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    _selectedExpenseIds.isEmpty ? '전체인쇄' : '선택인쇄',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
                         if (_selectedExpenseIds.isNotEmpty) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 10),
                           GestureDetector(
                             onTap: () => _bulkApprove(service, user.id),
                             child: Container(
@@ -387,7 +359,7 @@ class _ApproverScreenState extends State<ApproverScreen> {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: const Text(
-                                '일괄승인',
+                                '선택승인',
                                 style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,

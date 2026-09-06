@@ -393,7 +393,7 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                 ),
               ),
 
-              // 합산 + 일괄승인 배너
+              // 합산 + 인쇄 배너
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -442,27 +442,7 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                             ),
                           ),
                         ],
-                        if (_selectedExpenseIds.isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () => _bulkApprove(service, user.id),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF16A34A),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Text(
-                                '일괄승인',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                        ],
+
                       ],
                     ),
                   ],
@@ -495,16 +475,14 @@ class _ManagerDashboardState extends State<ManagerDashboard> {
                             isPending: isPending,
                             selected:
                                 _selectedExpenseIds.contains(expense.id),
-                            onToggle: isPending
-                                ? () => setState(() {
-                                      _selectedExpenseIds
-                                              .contains(expense.id!)
-                                          ? _selectedExpenseIds
-                                              .remove(expense.id!)
-                                          : _selectedExpenseIds
-                                              .add(expense.id!);
-                                    })
-                                : null,
+                            onToggle: () => setState(() {
+                                  _selectedExpenseIds
+                                          .contains(expense.id!)
+                                      ? _selectedExpenseIds
+                                          .remove(expense.id!)
+                                      : _selectedExpenseIds
+                                          .add(expense.id!);
+                                }),
                           );
                         },
                       ),
@@ -1297,20 +1275,17 @@ class _DashboardRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // 체크박스 (승인필요 항목만)
-          if (isPending)
-            SizedBox(
-              width: 36,
-              child: Checkbox(
-                value: selected,
-                activeColor: const Color(0xFF16A34A),
-                onChanged: (_) => onToggle?.call(),
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            )
-          else
-            const SizedBox(width: 10),
+          // 체크박스 (전체 항목)
+          SizedBox(
+            width: 36,
+            child: Checkbox(
+              value: selected,
+              activeColor: const Color(0xFF16A34A),
+              onChanged: (_) => onToggle?.call(),
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
           // 내용 (탭 → 상세)
           Expanded(
             child: GestureDetector(
