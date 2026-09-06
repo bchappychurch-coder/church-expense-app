@@ -778,11 +778,15 @@ class _ApprovalDetailState extends State<_ApprovalDetail> {
   @override
   Widget build(BuildContext context) {
     final e = widget.expense;
-    return SafeArea(
-      top: false,
-      child: Padding(
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.75,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      builder: (_, scrollController) => SingleChildScrollView(
+        controller: scrollController,
         padding: EdgeInsets.fromLTRB(
-            24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+            24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

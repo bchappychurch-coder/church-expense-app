@@ -377,6 +377,48 @@ class _ExpenseDetailState extends State<_ExpenseDetail> {
     }
   }
 
+  Future<void> _withdrawExpense() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('상신 취소'),
+        content: const Text('청구 신청을 취소하시겠습니까? 취소 후에는 되돌릴 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('아니오'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+            child: const Text('취소하기', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final firestoreService = FirestoreService();
+      await firestoreService.deleteExpense(widget.expense.id!);
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('청구 신청이 취소되었습니다'),
+            backgroundColor: Color(0xFF6B7280),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('오류: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final e = widget.expense;
@@ -465,6 +507,26 @@ class _ExpenseDetailState extends State<_ExpenseDetail> {
                     style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14)),
               ),
             ),
+          if (e.status == 'pending') ...[
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: OutlinedButton(
+                onPressed: _withdrawExpense,
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFFDC2626)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('상신 취소',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFDC2626))),
+              ),
+            ),
+          ],
         ],
         ),
       ),
